@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>LaundryLog</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="header">
+    <h1 class="header__title">LaundryLog</h1>
+    <button class="button button--primary" id="openNewOrder">+ New order</button>
+  </header>
+
+  <main class="page">
+    <nav class="filters" id="filters" aria-label="Filter orders by status">
+      <button class="filter is-active" data-status="all">All</button>
+      <button class="filter" data-status="received">Received</button>
+      <button class="filter" data-status="washing">Washing</button>
+      <button class="filter" data-status="ready">Ready</button>
+      <button class="filter" data-status="picked_up">Picked up</button>
+    </nav>
+
+    <p class="feedback" id="feedback" role="status"></p>
+
+    <section class="orders" id="orders" aria-live="polite"></section>
+  </main>
+
+  <!-- New order -->
+  <dialog class="panel" id="newOrderDialog">
+    <h2 class="panel__title">New order</h2>
+    <form id="newOrderForm" class="form">
+      <label class="field">
+        <span>Customer name</span>
+        <input name="name" required autocomplete="off">
+      </label>
+      <label class="field">
+        <span>Phone</span>
+        <input name="phone" required autocomplete="off" placeholder="0917-555-0000">
+      </label>
+      <label class="field">
+        <span>Load type</span>
+        <select name="load_type" id="loadType">
+          <option value="wash_fold">Wash &amp; fold (by weight)</option>
+          <option value="wash_only">Wash only (by weight)</option>
+          <option value="dry_clean">Dry clean (by item)</option>
+          <option value="press_only">Press only (by item)</option>
+        </select>
+      </label>
+      <label class="field" id="weightField">
+        <span>Weight (kg)</span>
+        <input name="weight_kg" type="number" step="0.1" min="0.1" value="4.5">
+      </label>
+      <label class="field is-hidden" id="itemsField">
+        <span>Number of items</span>
+        <input name="item_count" type="number" min="1" value="2">
+      </label>
+      <label class="field">
+        <span>Price (₱)</span>
+        <input name="price" type="number" step="0.01" min="0" value="315" required>
+      </label>
+      <label class="field">
+        <span>Note (optional)</span>
+        <input name="note" autocomplete="off">
+      </label>
+
+      <p class="form__errors" id="formErrors"></p>
+
+      <div class="form__actions">
+        <button type="button" class="button button--secondary" id="cancelNewOrder">Cancel</button>
+        <button type="submit" class="button button--primary">Save order</button>
+      </div>
+    </form>
+  </dialog>
+
+  <!-- Order detail -->
+  <dialog class="panel" id="detailDialog">
+    <div id="detailBody"></div>
+    <div class="form__actions">
+      <button type="button" class="button button--secondary" id="closeDetail">Close</button>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+</html>
