@@ -6,7 +6,7 @@
 
 ## What changed this week
 
-I started the finals project work on September 19. I had not made progress on the finals deliverables before then, so the LaundryLog files in the supplied archive (the Express/Postgres backend, `db/schema.sql`, `db/seed.sql`, the routes, validators, error handling, the plain-JavaScript frontend, and the first version of the README) are the project backbone. I am not claiming them as my own work. Everything below is what I added on top of it or did with it.
+I started on September 15, but I didn't get to the hands-on work until September 19. The setup, the additions and the deployment described below all happened on the 19th, and the commit dates show that. The LaundryLog files in the supplied archive (the Express/Postgres backend, `db/schema.sql`, `db/seed.sql`, the routes, validators, error handling, the plain-JavaScript frontend, and the first version of the README) are the project backbone. I am not claiming them as my own work. Everything below is what I added on top of it or did with it.
 
 ### Files I added
 
