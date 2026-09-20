@@ -1,5 +1,11 @@
 # LaundryLog
 
+**Live site:** https://laundrylog.onrender.com  
+**Repository:** https://github.com/rnzcrt/LaundryLog
+
+> The site runs on Render's free tier. If nobody has visited for a while the server
+> spins down, and the first page load can take **50 seconds or more** while it wakes up.
+
 ## 1. Overview
 
 LaundryLog is an order-tracking tool for a small, single-branch laundry shop. Staff
@@ -8,6 +14,9 @@ pickup, so nothing is lost on a busy day and anyone on shift can answer "is my
 laundry ready?" without digging through a notebook.
 
 It is built for the one or two people working the counter, not for customers.
+
+**Stack:** Node.js + Express, PostgreSQL, plain HTML/CSS/JavaScript frontend served
+from `public/`. Hosted on Render (web service + PostgreSQL).
 
 ## 2. Setup and installation
 
@@ -22,8 +31,8 @@ It is built for the one or two people working the counter, not for customers.
 ### Get the code
 
 ```bash
-git clone https://github.com/YOUR-USERNAME/YOUR-REPO.git
-cd YOUR-REPO
+git clone https://github.com/rnzcrt/LaundryLog.git
+cd LaundryLog
 ```
 
 ### Install dependencies
@@ -44,7 +53,7 @@ cp .env.example .env
 
 | Variable | What it is | Example value |
 | --- | --- | --- |
-| `DATABASE_URL` | Postgres connection string | `postgres://postgres:your_password_here@localhost:5432/laundrylog` |
+| `DATABASE_URL` | Postgres connection string (required, the server will not start without it) | `postgres://postgres:your_password_here@localhost:5432/laundrylog` |
 | `PORT` | Port the server listens on (optional, defaults to 3000) | `3000` |
 
 `.env` is listed in `.gitignore`. Real credentials are never committed; the example
@@ -61,13 +70,37 @@ createdb laundrylog
 Then load the tables and the sample rows:
 
 ```bash
+npm run db:setup     # runs db/schema.sql against $DATABASE_URL
+npm run db:seed      # runs db/seed.sql against $DATABASE_URL
+```
+
+Both scripts read `DATABASE_URL`, so export it first (or run them as
+`DATABASE_URL="postgres://..." npm run db:setup`). They are shortcuts for:
+
+```bash
 psql "postgres://postgres:your_password_here@localhost:5432/laundrylog" -f db/schema.sql
 psql "postgres://postgres:your_password_here@localhost:5432/laundrylog" -f db/seed.sql
 ```
 
-`db/schema.sql` drops and recreates the tables, so it is safe to run again while the
-schema is still changing. `db/seed.sql` adds four customers and seven orders spread
-across the four statuses, which is enough to see every screen state.
+> **Warning:** `db/schema.sql` **drops and recreates every table**. That is convenient
+> while developing locally, but never run it against the live Render database unless
+> you intend to erase all of its orders.
+
+`db/seed.sql` adds four customers and seven orders spread across the four statuses,
+which is enough to see every screen state.
+
+### Check the project before you run it
+
+```bash
+npm run check
+```
+
+This preflight script confirms the 13 required files exist and that every JavaScript
+file passes a syntax check. A healthy project prints:
+
+```
+Preflight passed: 13 required files present; 10 JavaScript files passed syntax checks.
+```
 
 ## 3. How to run it
 
@@ -77,10 +110,12 @@ npm start
 
 The terminal prints `LaundryLog is running at http://localhost:3000`. Open that
 address and you should see the LaundryLog header, the status filter tabs, and the
-seeded orders as cards.
+seeded orders as cards. (`npm run dev` does the same but restarts on file changes.)
 
 To check the server and the database separately, open
-<http://localhost:3000/api/health>. A healthy install returns:
+<http://localhost:3000/api/health> (or
+<https://laundrylog.onrender.com/api/health> for the live site). A healthy install
+returns:
 
 ```json
 { "status": "ok", "database": "connected" }
@@ -89,7 +124,41 @@ To check the server and the database separately, open
 If it returns `"database": "unreachable"`, Postgres is not running or `DATABASE_URL`
 is wrong.
 
-## 4. Features and usage
+## 4. Deployment (Render)
+
+The live site is two Render services in the same account:
+
+| Service | Type | Notes |
+| --- | --- | --- |
+| `laundrylog-db` | PostgreSQL 17, Free, Singapore region | Holds all the data |
+| `LaundryLog` | Web Service, Node, Free | Deploys from the `main` branch of `rnzcrt/LaundryLog` |
+
+To reproduce it:
+
+1. **Create the database first.** In Render, create a PostgreSQL instance and copy its
+   connection URLs from the Info page.
+2. **Load the schema and seed data into it.** A new hosted database is empty, and the
+   app returns a server error until the tables exist. From your own machine, use the
+   database's *External* URL:
+   ```bash
+   DATABASE_URL="<external database url>" npm run db:setup
+   DATABASE_URL="<external database url>" npm run db:seed
+   ```
+3. **Create a Web Service** from the GitHub repo, branch `main`, runtime Node. The
+   commands come straight from `package.json`: build `npm install`, start `npm start`.
+4. **Add the environment variable** `DATABASE_URL` to the web service, set to the
+   database's connection URL. `PORT` does not need to be set; Render provides it.
+5. **Deploy.** Render redeploys automatically on every push to `main`. Open
+   `/api/health` on the new URL to confirm it can reach the database.
+
+Free-tier limits to know about:
+
+- The free PostgreSQL database **expires on October 19, 2026** and is deleted unless
+  upgraded to a paid plan (see the second screenshot below).
+- The free web service spins down when idle, so the first request after a quiet period
+  is slow.
+
+## 5. Features and usage
 
 ### The main flow
 
@@ -120,6 +189,9 @@ is wrong.
 | `GET` | `/api/customers/:id` | One customer and their order history |
 | `POST` | `/api/customers` | Adds a customer without starting an order |
 
+Valid values: `load_type` is `wash_fold`, `wash_only`, `dry_clean` or `press_only`;
+payment `method` is `cash`, `gcash` or `card`.
+
 Example — logging a drop-off:
 
 ```bash
@@ -136,6 +208,12 @@ curl -X PATCH http://localhost:3000/api/orders/1/status \
   -d '{"status":"washing"}'
 ```
 
+Example — listing only what is ready for pickup on the live site:
+
+```bash
+curl "https://laundrylog.onrender.com/api/orders?status=ready"
+```
+
 ### What the API does when something is wrong
 
 | Situation | Status | Response |
@@ -146,7 +224,7 @@ curl -X PATCH http://localhost:3000/api/orders/1/status \
 | Phone number already registered | `409` | `{ "error": "That record already exists" }` |
 | Postgres not running | `503` | `{ "error": "Database unavailable", ... }` |
 
-## 5. Project structure
+## 6. Project structure
 
 ```
 .
@@ -157,6 +235,8 @@ curl -X PATCH http://localhost:3000/api/orders/1/status \
 │   ├── index.html
 │   ├── styles.css          design tokens and component styles
 │   └── app.js              fetches the API and renders the list, form and detail
+├── scripts/
+│   └── check.js            preflight: required files + JS syntax (npm run check)
 ├── src/
 │   ├── server.js           starts the server, closes the pool on shutdown
 │   ├── app.js              Express app: JSON, logging, static files, routers
@@ -184,21 +264,34 @@ curl -X PATCH http://localhost:3000/api/orders/1/status \
   rather than just a current value.
 - **payments** — one payment per order, with amount and method.
 
-## 6. Screenshots
+## 7. Screenshots
 
-| | |
-| --- | --- |
-| Order list with status filters | ![Order list](docs/screenshots/order-list.png) |
-| Logging a new order | ![New order form](docs/screenshots/new-order.png) |
-| Order detail and timeline | ![Order detail](docs/screenshots/order-detail.png) |
+**The live order list** at https://laundrylog.onrender.com, showing the seven seeded
+orders from the hosted database:
 
-## 7. Known issues and next steps
+![Order list on the live site](docs/screenshots/order-list.png)
+
+**The Render web service**, deployed from `main` and marked Live:
+
+![Render web service deploys](docs/screenshots/render-deploys.png)
+
+**The Render PostgreSQL database**, status Available, with its expiry notice:
+
+![Render PostgreSQL database info](docs/screenshots/render-database.png)
+
+## 8. Known issues and next steps
 
 Honest state of things:
 
-- **No tests.** Everything has been checked by hand with the browser and curl.
-- **No authentication.** Anyone who can reach the server can change any order. Fine
-  for one shop counter on a local machine, not fine if it is ever deployed.
+- **No authentication, and the site is now public.** Anyone who has the URL can
+  create orders and change any order's status. This is acceptable for a class
+  demo with sample data, and unacceptable for a real shop.
+- **No automated tests.** Everything has been checked by hand with the browser and
+  curl; `npm run check` only verifies files and syntax.
+- **"1 items" wording.** An order with a single item displays as "1 items"
+  (`public/app.js`, the item-count label has no singular case).
+- **Free-tier limits.** The database expires on October 19, 2026 and the web service
+  has slow cold starts (see section 4).
 - **Status only moves forward.** There is no way to undo a mistaken status change,
   which will bite a real user eventually. A correction route with a reason field is
   planned.
@@ -208,7 +301,10 @@ Honest state of things:
   seeded orders and wrong after a few hundred.
 - **The frontend is plain JavaScript,** not React. The page is served straight from
   `public/`, which keeps the focus on the API for now.
-- **Not deployed.** It runs locally only.
+- **Screenshots are incomplete.** The new-order form and the order detail/timeline
+  view have not been captured yet.
 
-Next: undoable status changes, pagination and search on the order list, a customers
-screen in the UI, and deployment with a hosted Postgres.
+Next: fix the "1 items" label, add tests for the API's validation and error cases,
+capture the missing screenshots, decide what happens to the database before it
+expires, then undoable status changes, pagination and search on the order list, and a
+customers screen in the UI.
