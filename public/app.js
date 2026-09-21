@@ -59,7 +59,9 @@ function setFeedback(message, isError = false) {
 }
 
 function measure(order) {
-  return order.weight_kg ? `${Number(order.weight_kg)}kg` : `${order.item_count} items`;
+  return order.weight_kg
+  ? `${Number(order.weight_kg)}kg`
+  : `${order.item_count} item${Number(order.item_count) === 1 ? '' : 's'}`;
 }
 
 function peso(value) {
