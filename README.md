@@ -3,7 +3,7 @@
 **Project repository URL:** https://github.com/rnzcrt/LaundryLog  
 **Live site URL:** https://laundrylog.onrender.com
 
-![The LaundryLog order list](docs/screenshots/order-list.png)
+![The LaundryLog order list](https://raw.githubusercontent.com/rnzcrt/LaundryLog/main/docs/screenshots/order-list.png)
 
 > The site runs on Render's free tier. If nobody has visited for a while the server
 > spins down, and the first page load can take **50 seconds or more** while it wakes up.
@@ -270,15 +270,15 @@ curl "https://laundrylog.onrender.com/api/orders?status=ready"
 **The live order list** at https://laundrylog.onrender.com, showing the seven seeded
 orders from the hosted database:
 
-![Order list on the live site](docs/screenshots/order-list.png)
+![Order list on the live site](https://raw.githubusercontent.com/rnzcrt/LaundryLog/main/docs/screenshots/order-list.png)
 
 **The Render web service**, deployed from `main` and marked Live:
 
-![Render web service deploys](docs/screenshots/render-deploys.png)
+![Render web service deploys](https://raw.githubusercontent.com/rnzcrt/LaundryLog/main/docs/screenshots/render-deploys.png)
 
 **The Render PostgreSQL database**, status Available, with its expiry notice:
 
-![Render PostgreSQL database info](docs/screenshots/render-database.png)
+![Render PostgreSQL database info](https://raw.githubusercontent.com/rnzcrt/LaundryLog/main/docs/screenshots/render-database.png)
 
 ## 8. Known issues
 
