@@ -47,8 +47,7 @@ looks exactly like what it is.
 - **What it gave back:** A rewritten README with a Render deployment section,
   corrected known issues, and later an architecture section, a next-steps list and
   the AI use section from the template.
-- **What I kept, what I changed, and why:** I kept the setup and API sections after
-  checking them against `package.json` and the routes. TODO: say what you changed.
+- **What I kept, what I changed, and why:** I kept the setup and API sections after checking them against `package.json` and the routes. I changed the README to document the actual Render deployment, local setup, screenshots, known issues, project structure, architecture, and AI use. I also corrected details that did not match the current project.
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/e47fff3 (first version), https://github.com/rnzcrt/LaundryLog/commit/2de2465 (template sections)
 
 ### 2026-09-20 - Reflection journal draft and rewrite
@@ -58,9 +57,8 @@ looks exactly like what it is.
   version that sounds more like a person wrote it.
 - **What it gave back:** A journal in first person covering the goal, what I did,
   what got in the way, what I learned, and the security paragraph the template asks for.
-- **What I kept, what I changed, and why:** TODO: say which sentences you rewrote
-  in your own words and which facts you checked yourself.
-- **Commit:** TODO-SHA (journal, in my workspace repo)
+- **What I kept, what I changed, and why:** I used the draft as a starting point, but I rewrote parts of it to match what I actually did and what I actually learned. I checked the dates, setup work, database work, deployment, and testing against my terminal history, project files, screenshots, and the running application. I did not keep statements that did not match my actual work.
+- **Commit:** Journal is maintained in my private workspace repository; its commit is not present in the public LaundryLog repository.
 
 ### 2026-09-20 - Screenshot processing
 
@@ -85,7 +83,7 @@ looks exactly like what it is.
 - **What I kept, what I changed, and why:** I kept the security findings and put them
   in the README and my journal. The React question I am taking to my instructor
   rather than deciding myself.
-- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/2de2465 (README sections), TODO-SHA (this file)
+- **Commit:** [https://github.com/rnzcrt/LaundryLog/commit/2de2465](https://github.com/rnzcrt/LaundryLog/commit/2de2465) (README sections), [https://github.com/rnzcrt/LaundryLog/commit/cb87b61](https://github.com/rnzcrt/LaundryLog/commit/cb87b61) (AI-USAGE.md)
 
 ## 2. Where the AI got it wrong
 
@@ -124,23 +122,40 @@ looks exactly like what it is.
 
 ## 3. Who wrote what
 
-At least a fifth of this project is code you wrote yourself. Name it, and explain
-it in your own words.
+At this point, most of the LaundryLog application came from the supplied project archive. I did not write the original application backbone, so I am not counting that code as my own.
 
-> **TODO, and be honest about it.** Most of the code in this project came in the
-> supplied project archive and I did not write it. The code I wrote myself so far is
-> small. Fill this section with the files and commits that are really mine, and add
-> to it as I write more in the coming weeks. Do not list a file here that I did not
-> write.
+The code and project changes I can honestly identify as mine so far are listed below. I will add to this section as I write more of the project in later weeks.
 
 ### Written by me
 
-- **File:** TODO
-- **Commit:** TODO
-- **What it does and why it is built this way:** TODO, in my own words
+- **File:** `scripts/check.js`
+- **Commit:** `c7df593`
+- **What it does and why it is built this way:** This is a preflight check I added to make sure required project files exist and that the JavaScript files pass syntax checks before I continue working on the project. I wanted a quick local check instead of discovering basic file or syntax problems later.
+
+- **File:** `public/app.js`
+- **Commit:** `5d12768`
+- **What it does and why it is built this way:** I fixed the item-count display so an order with one item says `1 item` and an order with more than one says `2 items`, `3 items`, and so on. I kept the change small because the existing display logic already worked except for the singular wording.
+
+- **File:** `test/orders.test.js`
+- **Commit:** `dd5a735`
+- **What it does and why it is built this way:** I added automated API tests for two validation cases I manually tested: requesting an order that does not exist should return HTTP 404, and creating an order without required fields should return HTTP 400. I used Node's built-in test runner so the tests can run with `npm test` without adding another test framework.
+
+- **File:** `package.json`
+- **Commit:** `dd5a735`
+- **What it does and why it is built this way:** I added the `npm test` script so the automated tests can be run with one consistent command.
+
+- **File:** `.gitignore`
+- **Commit:** `c7df593`
+- **What it does and why it is built this way:** I added ignore rules for local files that should not be committed, including the local environment file containing database credentials.
+
+- **File:** `.env.example`
+- **Commit:** `c7df593`
+- **What it does and why it is built this way:** I added a safe example of the environment variables needed to run the project without putting my actual local database credentials into the repository.
 
 ### The AI-written part I understand best
 
-- **File:** TODO
-- **Commit:** TODO
-- **What it does and why we kept it:** TODO
+- **File:** `src/routes/orders.js`
+- **Commit:** `c7df593`
+- **What it does and why we kept it:** This was part of the supplied project backbone rather than code I wrote from scratch. I understand it as the Express router responsible for the order API: listing and searching orders, retrieving an individual order, creating orders, changing order status, and recording payments. I kept it because it provides the main backend API used by the LaundryLog frontend, and I tested its behavior through local API requests.
+
+I am not claiming that the supplied code is mine. The initial `c7df593` commit contains the starting LaundryLog application, including the Express application, routes, database code, validators, frontend, schema, seed data, and styling. I reviewed and tested that code while completing the project, but I distinguish that from code I personally added or changed.
