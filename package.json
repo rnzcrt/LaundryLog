@@ -8,7 +8,8 @@
     "dev": "node --watch src/server.js",
     "db:setup": "psql \"$DATABASE_URL\" -f db/schema.sql",
     "db:seed": "psql \"$DATABASE_URL\" -f db/seed.sql",
-    "check": "node scripts/check.js"
+    "check": "node scripts/check.js",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=18"
