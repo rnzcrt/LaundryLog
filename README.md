@@ -1,7 +1,9 @@
 # LaundryLog
 
-**Live site:** https://laundrylog.onrender.com  
-**Repository:** https://github.com/rnzcrt/LaundryLog
+**Project repository URL:** https://github.com/rnzcrt/LaundryLog  
+**Live site URL:** https://laundrylog.onrender.com
+
+![The LaundryLog order list](docs/screenshots/order-list.png)
 
 > The site runs on Render's free tier. If nobody has visited for a while the server
 > spins down, and the first page load can take **50 seconds or more** while it wakes up.
@@ -249,9 +251,8 @@ curl "https://laundrylog.onrender.com/api/orders?status=ready"
 │   │   └── customers.js    /api/customers
 │   └── validators/
 │       └── orderValidators.js   input rules and allowed status transitions
-├── docs/screenshots/
-├── .env.example
-└── REPORT.md               weekly increment report
+├── docs/screenshots/       screenshots used in this README
+└── .env.example
 ```
 
 ### Data model
@@ -279,13 +280,16 @@ orders from the hosted database:
 
 ![Render PostgreSQL database info](docs/screenshots/render-database.png)
 
-## 8. Known issues and next steps
+## 8. Known issues
 
 Honest state of things:
 
 - **No authentication, and the site is now public.** Anyone who has the URL can
   create orders and change any order's status. This is acceptable for a class
   demo with sample data, and unacceptable for a real shop.
+- **Thin hardening.** There is no `helmet`, no rate limiting, and no length limit on
+  the customer name, phone or note fields. Queries are parameterised and server
+  errors do not return stack traces, but that is not the same as hardened.
 - **No automated tests.** Everything has been checked by hand with the browser and
   curl; `npm run check` only verifies files and syntax.
 - **"1 items" wording.** An order with a single item displays as "1 items"
@@ -304,7 +308,29 @@ Honest state of things:
 - **Screenshots are incomplete.** The new-order form and the order detail/timeline
   view have not been captured yet.
 
-Next: fix the "1 items" label, add tests for the API's validation and error cases,
-capture the missing screenshots, decide what happens to the database before it
-expires, then undoable status changes, pagination and search on the order list, and a
-customers screen in the UI.
+## 9. Architecture
+
+One Express service on Render does two jobs: it serves the staff page (plain HTML,
+CSS and JavaScript from `public/`) and it answers the JSON API under `/api`. The
+browser talks to that same service, so there is no separate front-end host and no
+CORS configuration. The API reads and writes PostgreSQL (a separate Render database
+in Singapore) through the connection pool in `src/db.js`, using the `DATABASE_URL`
+environment variable. Every query passes its values as parameters, not inside the SQL
+text.
+
+## 10. What I would do next
+
+- Put the site behind a login, and add `helmet`, rate limiting and length limits on
+  the text fields, because right now anyone with the link can change any order.
+- Fix the "1 items" label and add automated tests for the API's validation and
+  error cases, so changes stop depending on me clicking through the page.
+- Move or upgrade the database before it expires on October 19, 2026, then add
+  undoable status changes.
+
+## 11. AI use
+
+![Built with AI assistance](https://img.shields.io/badge/built%20with-AI%20assistance-0b5fff)
+
+I used Claude (Anthropic) in its chat interface to review the project and draft the
+documentation. It did not write or change any of the application code. The full
+account, with commit links, is in [AI-USAGE.md](AI-USAGE.md).
