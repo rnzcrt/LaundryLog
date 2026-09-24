@@ -7,10 +7,13 @@ const db = require('./db');
 const ordersRouter = require('./routes/orders');
 const customersRouter = require('./routes/customers');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
+const basicAuth = require('./middleware/basicAuth');
 
 const app = express();
 
 app.use(express.json());
+
+app.use(basicAuth);
 
 // Small request log, useful while building.
 app.use((req, res, next) => {
