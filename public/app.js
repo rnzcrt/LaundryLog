@@ -185,6 +185,49 @@ async function openDetail(id) {
   }
 }
 
+async function openCustomerHistory(id) {
+  try {
+    const { customer, orders } = await api(`/api/customers/${id}`);
+    detailBody.innerHTML = '';
+
+    const title = document.createElement('h2');
+    title.className = 'panel__title';
+    title.textContent = `Customer — ${customer.name}`;
+
+    const phone = document.createElement('p');
+    phone.textContent = customer.phone;
+
+    const historyTitle = document.createElement('h3');
+    historyTitle.textContent = `Order history (${orders.length})`;
+
+    detailBody.append(title, phone, historyTitle);
+
+    if (orders.length === 0) {
+      const empty = document.createElement('p');
+      empty.textContent = 'No orders yet.';
+      detailBody.append(empty);
+    } else {
+      const list = document.createElement('ul');
+      list.className = 'timeline';
+
+      for (const order of orders) {
+        const item = document.createElement('li');
+        item.textContent =
+          `Order #${order.id} — ${LOAD_LABELS[order.load_type]}, ` +
+          `${measure(order)} — ${peso(order.price)} — ` +
+          `${STATUS_LABELS[order.status]} — ${formatDate(order.created_at)}`;
+        list.append(item);
+      }
+
+      detailBody.append(list);
+    }
+
+    detailDialog.showModal();
+  } catch (err) {
+    setFeedback(err.message, true);
+  }
+}
+
 async function changeStatus(id, status) {
   try {
     await api(`/api/orders/${id}/status`, {
@@ -244,3 +287,74 @@ newOrderForm.addEventListener('submit', async (event) => {
 });
 
 loadOrders();
+
+const customerSearch = document.getElementById('customerSearch');
+const customersEl = document.getElementById('customers');
+
+async function loadCustomers(query = '') {
+  const params = new URLSearchParams();
+
+  if (query.trim()) {
+    params.set('q', query.trim());
+  }
+
+  const response = await fetch(`/api/customers?${params.toString()}`);
+
+  if (!response.ok) {
+    throw new Error('Unable to load customers');
+  }
+
+  const data = await response.json();
+  return data.customers;
+}
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function renderCustomers(customers) {
+  if (!customers.length) {
+    customersEl.innerHTML = '<p>No customers found.</p>';
+    return;
+  }
+
+  customersEl.innerHTML = customers.map(customer => `
+    <article class="customer-card">
+      <h3>${escapeHtml(customer.name)}</h3>
+      <p>${escapeHtml(customer.phone)}</p>
+      <button
+        class="button button--secondary customer-history"
+        data-customer-id="${customer.id}"
+      >
+        View history
+      </button>
+    </article>
+  `).join('');
+}
+
+async function refreshCustomers(query = '') {
+  try {
+    const customers = await loadCustomers(query);
+    renderCustomers(customers);
+  } catch (err) {
+    customersEl.innerHTML = '<p>Unable to load customers.</p>';
+    console.error('Customer load failed:', err);
+  }
+}
+
+customerSearch.addEventListener('input', () => {
+  refreshCustomers(customerSearch.value);
+});
+
+refreshCustomers();
+
+customersEl.addEventListener('click', (event) => {
+  const button = event.target.closest('.customer-history');
+  if (!button) return;
+
+  openCustomerHistory(button.dataset.customerId);
+});

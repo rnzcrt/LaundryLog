@@ -24,6 +24,22 @@
     <p class="feedback" id="feedback" role="status"></p>
 
     <section class="orders" id="orders" aria-live="polite"></section>
+    
+    <section class="customers-section">
+      <h2>Customers</h2>
+
+      <label class="field">
+        <span>Search customers</span>
+        <input
+          id="customerSearch"
+          type="search"
+          placeholder="Name or phone"
+          autocomplete="off"
+        >
+      </label>
+
+      <div id="customers" aria-live="polite"></div>
+    </section>
   </main>
 
   <!-- New order -->
