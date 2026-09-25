@@ -159,3 +159,14 @@ The code and project changes I can honestly identify as mine so far are listed b
 - **What it does and why we kept it:** This was part of the supplied project backbone rather than code I wrote from scratch. I understand it as the Express router responsible for the order API: listing and searching orders, retrieving an individual order, creating orders, changing order status, and recording payments. I kept it because it provides the main backend API used by the LaundryLog frontend, and I tested its behavior through local API requests.
 
 I am not claiming that the supplied code is mine. The initial `c7df593` commit contains the starting LaundryLog application, including the Express application, routes, database code, validators, frontend, schema, seed data, and styling. I reviewed and tested that code while completing the project, but I distinguish that from code I personally added or changed.
+## Week 2 AI usage
+
+### Customer search and order history
+
+- **AI tool:** ChatGPT
+- **Task:** I used ChatGPT to help me inspect the existing LaundryLog customer API and plan a manageable enhancement from the provided project requirements.
+- **What I personally implemented:** I wrote the frontend customer directory functionality in `public/app.js` and added the customer search section to `public/index.html`. This includes customer search by name or phone, customer result rendering, and opening customer order history.
+- **Existing code reused:** The existing `src/routes/customers.js` API already provided customer search and customer order history endpoints. I reused those endpoints rather than rebuilding the backend.
+- **Testing:** I tested customer search with existing customers, searched by phone number, tested a search with no results, and opened customer history for multiple customers. I also ran `node --check public/app.js`, `npm run check`, and `npm test`; all automated tests passed.
+- **Commit:** `247c616`
+- **Result:** The customer directory and order-history feature works locally without breaking the existing order workflow.
