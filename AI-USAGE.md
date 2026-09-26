@@ -179,5 +179,5 @@ I am not claiming that the supplied code is mine. The initial `c7df593` commit c
 - **Existing code reused:** I reused the existing PostgreSQL connection/transaction module in `src/db.js`, existing `HttpError` and `asyncHandler` middleware, existing order ID validation, and the existing Express routing structure.
 - **Database changes:** I added `machines` and `machine_loads` tables through a non-destructive migration and seeded the required 8 machines. Existing orders and customers were preserved.
 - **Testing:** I verified the authenticated machine API returned all 8 machines. I created one valid 2 kg machine load for existing order #9, verified a 9 kg load was rejected by an 8 kg machine, verified a second active load on the same machine was rejected, and verified the database still contained only the single valid load. `npm run check` passed and `npm test` passed 3/3.
-- **Commit:** To be filled after the machine changes are committed.
+- **Commit:** `66c8b4e`
 - **Result:** The project now has a working machine inventory and basic machine-load assignment with capacity and active-load protection.
