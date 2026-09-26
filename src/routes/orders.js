@@ -282,4 +282,123 @@ router.post(
   }),
 );
 
+router.patch(
+  '/:orderId/loads/:loadId/status',
+  asyncHandler(async (req, res) => {
+    const orderId = parseId(req.params.orderId, 'order_id');
+    const loadId = parseId(req.params.loadId, 'load_id');
+
+    const allowedStatuses = ['queued', 'running', 'completed'];
+    const nextStatus = String(req.body.status || '').trim();
+
+    if (!allowedStatuses.includes(nextStatus)) {
+      throw new HttpError(
+        400,
+        'status must be one of: queued, running, completed',
+      );
+    }
+
+    const client = await db.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const loadResult = await client.query(
+        `SELECT ml.id,
+                ml.order_id,
+                ml.machine_id,
+                ml.status,
+                m.status AS machine_status
+         FROM machine_loads ml
+         JOIN machines m ON m.id = ml.machine_id
+         WHERE ml.id = $1
+           AND ml.order_id = $2
+         FOR UPDATE`,
+        [loadId, orderId],
+      );
+
+      if (loadResult.rowCount === 0) {
+        throw new HttpError(
+          404,
+          `No machine load with id ${loadId} for order ${orderId}`,
+        );
+      }
+
+      const load = loadResult.rows[0];
+
+      const validTransitions = {
+        queued: ['running'],
+        running: ['completed'],
+        completed: [],
+      };
+
+      if (!validTransitions[load.status].includes(nextStatus)) {
+        throw new HttpError(
+          409,
+          `A ${load.status} load can only move to ${
+            validTransitions[load.status].join(', ') || 'no further status'
+          }`,
+        );
+      }
+
+      if (nextStatus === 'running' && load.machine_status === 'maintenance') {
+        throw new HttpError(
+          409,
+          'This machine is currently in maintenance',
+        );
+      }
+
+      let updateQuery;
+      let updateParams;
+
+      if (nextStatus === 'running') {
+        updateQuery = `
+          UPDATE machine_loads
+          SET status = 'running',
+              started_at = now()
+          WHERE id = $1
+          RETURNING id, order_id, machine_id, load_number, weight_kg,
+                    status, started_at, completed_at, notes, created_at
+        `;
+        updateParams = [loadId];
+
+        await client.query(
+          `UPDATE machines
+           SET status = 'running'
+           WHERE id = $1`,
+          [load.machine_id],
+        );
+      } else {
+        updateQuery = `
+          UPDATE machine_loads
+          SET status = 'completed',
+              completed_at = now()
+          WHERE id = $1
+          RETURNING id, order_id, machine_id, load_number, weight_kg,
+                    status, started_at, completed_at, notes, created_at
+        `;
+        updateParams = [loadId];
+
+        await client.query(
+          `UPDATE machines
+           SET status = 'available'
+           WHERE id = $1`,
+          [load.machine_id],
+        );
+      }
+
+      const updatedLoad = await client.query(updateQuery, updateParams);
+
+      await client.query('COMMIT');
+
+      res.json({ load: updatedLoad.rows[0] });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }),
+);
+
 module.exports = router;

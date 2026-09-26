@@ -68,3 +68,32 @@ test('POST /api/orders returns 400 when required fields are missing', async () =
   assert.ok(Array.isArray(body.details));
   assert.ok(body.details.length > 0);
 });
+
+test('PATCH machine load status rejects completed load from moving back to running', async () => {
+  const { response, body } = await request('/api/orders/9/loads/1/status', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ status: 'running' }),
+  });
+
+  assert.equal(response.status, 409);
+  assert.match(body.error, /completed load can only move to no further status/);
+});
+
+test('PATCH machine load status rejects an invalid status value', async () => {
+  const { response, body } = await request('/api/orders/9/loads/1/status', {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ status: 'invalid' }),
+  });
+
+  assert.equal(response.status, 400);
+  assert.equal(
+    body.error,
+    'status must be one of: queued, running, completed',
+  );
+});
