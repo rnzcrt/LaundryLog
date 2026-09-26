@@ -6,6 +6,7 @@ const express = require('express');
 const db = require('./db');
 const ordersRouter = require('./routes/orders');
 const customersRouter = require('./routes/customers');
+const machinesRouter = require('./routes/machines');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const basicAuth = require('./middleware/basicAuth');
 
@@ -43,6 +44,7 @@ app.get('/api/health', async (req, res) => {
 
 app.use('/api/orders', ordersRouter);
 app.use('/api/customers', customersRouter);
+app.use('/api/machines', machinesRouter);
 
 app.use(notFoundHandler);
 app.use(errorHandler);

@@ -159,6 +159,7 @@ The code and project changes I can honestly identify as mine so far are listed b
 - **What it does and why we kept it:** This was part of the supplied project backbone rather than code I wrote from scratch. I understand it as the Express router responsible for the order API: listing and searching orders, retrieving an individual order, creating orders, changing order status, and recording payments. I kept it because it provides the main backend API used by the LaundryLog frontend, and I tested its behavior through local API requests.
 
 I am not claiming that the supplied code is mine. The initial `c7df593` commit contains the starting LaundryLog application, including the Express application, routes, database code, validators, frontend, schema, seed data, and styling. I reviewed and tested that code while completing the project, but I distinguish that from code I personally added or changed.
+
 ## Week 2 AI usage
 
 ### Customer search and order history
@@ -170,3 +171,13 @@ I am not claiming that the supplied code is mine. The initial `c7df593` commit c
 - **Testing:** I tested customer search with existing customers, searched by phone number, tested a search with no results, and opened customer history for multiple customers. I also ran `node --check public/app.js`, `npm run check`, and `npm test`; all automated tests passed.
 - **Commit:** `247c616`
 - **Result:** The customer directory and order-history feature works locally without breaking the existing order workflow.
+### Machine inventory and load assignment
+
+- **AI tool:** ChatGPT
+- **Task:** I used ChatGPT to help me plan and implement a machine inventory and machine-load assignment enhancement while preserving the existing LaundryLog database and application structure.
+- **What I personally implemented:** I added the machine database migration in `db/migrations/001_add_machines.sql`, added the machine API in `src/routes/machines.js`, registered the machine route in `src/app.js`, added machine-load validation in `src/validators/orderValidators.js`, and added the order machine-load endpoint in `src/routes/orders.js`.
+- **Existing code reused:** I reused the existing PostgreSQL connection/transaction module in `src/db.js`, existing `HttpError` and `asyncHandler` middleware, existing order ID validation, and the existing Express routing structure.
+- **Database changes:** I added `machines` and `machine_loads` tables through a non-destructive migration and seeded the required 8 machines. Existing orders and customers were preserved.
+- **Testing:** I verified the authenticated machine API returned all 8 machines. I created one valid 2 kg machine load for existing order #9, verified a 9 kg load was rejected by an 8 kg machine, verified a second active load on the same machine was rejected, and verified the database still contained only the single valid load. `npm run check` passed and `npm test` passed 3/3.
+- **Commit:** To be filled after the machine changes are committed.
+- **Result:** The project now has a working machine inventory and basic machine-load assignment with capacity and active-load protection.

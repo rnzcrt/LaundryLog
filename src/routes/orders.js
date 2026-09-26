@@ -9,6 +9,7 @@ const {
   validateNewOrder,
   validateStatusChange,
   validatePayment,
+  validateMachineLoad,
 } = require('../validators/orderValidators');
 
 const router = express.Router();
@@ -197,6 +198,87 @@ router.post(
     );
 
     res.status(201).json({ payment: rows[0] });
+  }),
+);
+
+router.post(
+  '/:id/loads',
+  asyncHandler(async (req, res) => {
+    const orderId = parseId(req.params.id, 'order_id');
+    const { machineId, loadNumber, weightKg, notes } = validateMachineLoad(req.body);
+
+    const client = await db.pool.connect();
+
+    try {
+      await client.query('BEGIN');
+
+      const orderResult = await client.query(
+        `SELECT id, weight_kg
+         FROM orders
+         WHERE id = $1
+         FOR UPDATE`,
+        [orderId],
+      );
+
+      if (orderResult.rowCount === 0) {
+        throw new HttpError(404, `No order with id ${orderId}`);
+      }
+
+      const machineResult = await client.query(
+        `SELECT id, name, machine_kind, capacity_kg, status
+         FROM machines
+         WHERE id = $1`,
+        [machineId],
+      );
+
+      if (machineResult.rowCount === 0) {
+        throw new HttpError(404, `No machine with id ${machineId}`);
+      }
+
+      const machine = machineResult.rows[0];
+
+      if (machine.status === 'maintenance') {
+        throw new HttpError(409, 'This machine is currently in maintenance');
+      }
+
+      if (weightKg > Number(machine.capacity_kg)) {
+        throw new HttpError(
+          409,
+          `This load exceeds the machine capacity of ${machine.capacity_kg}kg`,
+        );
+      }
+
+      const existingLoad = await client.query(
+        `SELECT id
+         FROM machine_loads
+         WHERE machine_id = $1
+           AND status IN ('queued', 'running')
+         LIMIT 1`,
+        [machineId],
+      );
+
+      if (existingLoad.rowCount > 0) {
+        throw new HttpError(409, 'This machine already has an active load');
+      }
+
+      const loadResult = await client.query(
+        `INSERT INTO machine_loads
+          (order_id, machine_id, load_number, weight_kg, status, notes)
+         VALUES ($1, $2, $3, $4, 'queued', $5)
+         RETURNING id, order_id, machine_id, load_number, weight_kg,
+                   status, started_at, completed_at, notes, created_at`,
+        [orderId, machineId, loadNumber, weightKg, notes],
+      );
+
+      await client.query('COMMIT');
+
+      res.status(201).json({ load: loadResult.rows[0] });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
   }),
 );
 

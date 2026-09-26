@@ -148,6 +148,51 @@ function validateNewCustomer(body = {}) {
   };
 }
 
+function validateMachineLoad(body = {}) {
+  const errors = [];
+
+  const machineId = Number(body.machine_id);
+  const loadNumber = Number(body.load_number);
+  const weightKg = Number(body.weight_kg);
+
+  if (!Number.isInteger(machineId) || machineId < 1) {
+    errors.push({
+      field: 'machine_id',
+      message: 'machine_id must be a positive whole number',
+    });
+  }
+
+  if (!Number.isInteger(loadNumber) || loadNumber < 1) {
+    errors.push({
+      field: 'load_number',
+      message: 'load_number must be a positive whole number',
+    });
+  }
+
+  if (!Number.isFinite(weightKg) || weightKg <= 0) {
+    errors.push({
+      field: 'weight_kg',
+      message: 'weight_kg must be a number greater than 0',
+    });
+  }
+
+  if (weightKg > 10) {
+    errors.push({
+      field: 'weight_kg',
+      message: 'weight_kg cannot exceed 10 for a single machine load',
+    });
+  }
+
+  fail(errors);
+
+  return {
+    machineId,
+    loadNumber,
+    weightKg: Number(weightKg.toFixed(2)),
+    notes: isBlank(body.notes) ? null : String(body.notes).trim(),
+  };
+}
+
 module.exports = {
   LOAD_TYPES,
   STATUSES,
@@ -158,4 +203,5 @@ module.exports = {
   validateStatusChange,
   validatePayment,
   validateNewCustomer,
+  validateMachineLoad,
 };
