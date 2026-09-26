@@ -181,3 +181,12 @@ I am not claiming that the supplied code is mine. The initial `c7df593` commit c
 - **Testing:** I verified the authenticated machine API returned all 8 machines. I created one valid 2 kg machine load for existing order #9, verified a 9 kg load was rejected by an 8 kg machine, verified a second active load on the same machine was rejected, and verified the database still contained only the single valid load. `npm run check` passed and `npm test` passed 3/3.
 - **Commit:** `66c8b4e`
 - **Result:** The project now has a working machine inventory and basic machine-load assignment with capacity and active-load protection.
+
+### Machine-load status tracking
+
+- **AI tool:** ChatGPT
+- **Task:** I used ChatGPT to help me implement and test machine-load status tracking for the machine enhancement.
+- **What I personally implemented:** I added the machine-load status endpoint in `src/routes/orders.js`, including the `queued → running → completed` workflow, timestamp updates, machine status updates, transition validation, and maintenance protection. I also added automated tests in `test/orders.test.js`.
+- **Testing:** I manually verified `queued → running`, `running → completed`, automatic `started_at` and `completed_at` timestamps, the machine changing to `running` and then back to `available`, and rejection of an invalid completed-to-running transition. I also ran `npm test` with 5/5 tests passing and `npm run check` successfully.
+- **Commit:** `ff67583`
+- **Result:** Machine-load status tracking now works with validated status transitions and corresponding machine availability updates.
