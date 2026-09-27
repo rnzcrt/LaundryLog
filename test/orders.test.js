@@ -5,6 +5,7 @@ require('dotenv').config();
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { splitLoadWeight } = require('../src/utils/loadSplitter');
+const { calculateServicePrice } = require('../src/utils/pricing');
 
 const app = require('../src/app');
 
@@ -144,4 +145,16 @@ test('GET order load plan rejects an invalid machine capacity', async () => {
     body.error,
     'capacity_kg must be a number greater than 0',
   );
+});
+
+test('calculates regular wash pricing by load', () => {
+  assert.equal(calculateServicePrice('wash', 'regular', 2), 140);
+});
+
+test('calculates titan dry pricing by load', () => {
+  assert.equal(calculateServicePrice('dry', 'titan', 3), 330);
+});
+
+test('calculates folding pricing by load', () => {
+  assert.equal(calculateServicePrice('fold', 'regular', 4), 80);
 });
