@@ -4,6 +4,7 @@ require('dotenv').config();
 
 const test = require('node:test');
 const assert = require('node:assert/strict');
+const { splitLoadWeight } = require('../src/utils/loadSplitter');
 
 const app = require('../src/app');
 
@@ -95,5 +96,52 @@ test('PATCH machine load status rejects an invalid status value', async () => {
   assert.equal(
     body.error,
     'status must be one of: queued, running, completed',
+  );
+});
+
+test('splitLoadWeight keeps weights within an 8kg machine capacity', () => {
+  assert.deepEqual(splitLoadWeight(18, 8), [8, 8, 2]);
+});
+
+test('splitLoadWeight does not split a load already within capacity', () => {
+  assert.deepEqual(splitLoadWeight(7, 8), [7]);
+});
+
+test('splitLoadWeight handles a 10kg Titan load', () => {
+  assert.deepEqual(splitLoadWeight(21, 10), [10, 10, 1]);
+});
+
+test('GET order load plan splits an 18kg order for an 8kg machine', async () => {
+  const { response, body } = await request(
+    '/api/orders/10/load-plan?capacity_kg=8',
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(body.order_id, 10);
+  assert.equal(body.total_weight_kg, 18);
+  assert.equal(body.capacity_kg, 8);
+  assert.equal(body.load_count, 3);
+  assert.deepEqual(body.loads, [8, 8, 2]);
+});
+
+test('GET order load plan splits an 18kg order for a 10kg machine', async () => {
+  const { response, body } = await request(
+    '/api/orders/10/load-plan?capacity_kg=10',
+  );
+
+  assert.equal(response.status, 200);
+  assert.equal(body.load_count, 2);
+  assert.deepEqual(body.loads, [10, 8]);
+});
+
+test('GET order load plan rejects an invalid machine capacity', async () => {
+  const { response, body } = await request(
+    '/api/orders/10/load-plan?capacity_kg=0',
+  );
+
+  assert.equal(response.status, 400);
+  assert.equal(
+    body.error,
+    'capacity_kg must be a number greater than 0',
   );
 });

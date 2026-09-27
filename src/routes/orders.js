@@ -11,6 +11,7 @@ const {
   validatePayment,
   validateMachineLoad,
 } = require('../validators/orderValidators');
+const { splitLoadWeight } = require('../utils/loadSplitter');
 
 const router = express.Router();
 
@@ -198,6 +199,49 @@ router.post(
     );
 
     res.status(201).json({ payment: rows[0] });
+  }),
+);
+
+router.get(
+  '/:id/load-plan',
+  asyncHandler(async (req, res) => {
+    const orderId = parseId(req.params.id, 'order_id');
+
+    const { rows } = await db.query(
+      `SELECT id, weight_kg
+       FROM orders
+       WHERE id = $1`,
+      [orderId],
+    );
+
+    if (rows.length === 0) {
+      throw new HttpError(404, `No order with id ${orderId}`);
+    }
+
+    const weightKg = Number(rows[0].weight_kg);
+
+    if (!Number.isFinite(weightKg) || weightKg <= 0) {
+      throw new HttpError(409, 'This order does not have a valid weight');
+    }
+
+    const capacityKg = Number(req.query.capacity_kg);
+
+    if (!Number.isFinite(capacityKg) || capacityKg <= 0) {
+      throw new HttpError(
+        400,
+        'capacity_kg must be a number greater than 0',
+      );
+    }
+
+    const loads = splitLoadWeight(weightKg, capacityKg);
+
+    res.json({
+      order_id: orderId,
+      total_weight_kg: weightKg,
+      capacity_kg: capacityKg,
+      load_count: loads.length,
+      loads,
+    });
   }),
 );
 
