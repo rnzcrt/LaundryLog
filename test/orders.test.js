@@ -5,7 +5,10 @@ require('dotenv').config();
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { splitLoadWeight } = require('../src/utils/loadSplitter');
-const { calculateServicePrice } = require('../src/utils/pricing');
+const {
+  calculateServicePrice,
+  calculateOrderPrice,
+} = require('../src/utils/pricing');
 
 const app = require('../src/app');
 
@@ -157,4 +160,29 @@ test('calculates titan dry pricing by load', () => {
 
 test('calculates folding pricing by load', () => {
   assert.equal(calculateServicePrice('fold', 'regular', 4), 80);
+});
+
+test('calculates wash only order pricing', () => {
+  assert.equal(
+    calculateOrderPrice({
+      washMachineType: 'regular',
+      loadCount: 2,
+      includeWash: true,
+    }),
+    140,
+  );
+});
+
+test('calculates wash plus dry plus fold pricing', () => {
+  assert.equal(
+    calculateOrderPrice({
+      washMachineType: 'regular',
+      dryMachineType: 'titan',
+      loadCount: 2,
+      includeWash: true,
+      includeDry: true,
+      includeFold: true,
+    }),
+    400,
+  );
 });
