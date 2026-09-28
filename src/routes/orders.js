@@ -29,9 +29,14 @@ const ORDER_SELECT = `
          o.note,
          o.created_at,
          o.updated_at,
-         p.amount AS paid_amount,
+         COALESCE(p.amount, 0) AS paid_amount,
          p.method AS paid_method,
-         p.paid_at
+         p.paid_at,
+         CASE
+           WHEN COALESCE(p.amount, 0) >= o.price THEN 'FULLY PAID'
+           ELSE 'UNPAID'
+         END AS payment_status,
+         GREATEST(o.price - COALESCE(p.amount, 0), 0) AS outstanding_amount
   FROM orders o
   JOIN customers c ON c.id = o.customer_id
   LEFT JOIN payments p ON p.order_id = o.id
