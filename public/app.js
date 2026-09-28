@@ -252,11 +252,26 @@ filtersEl.addEventListener('click', (event) => {
   loadOrders();
 });
 
-document.getElementById('loadType').addEventListener('change', (event) => {
-  const byWeight = ['wash_fold', 'wash_only'].includes(event.target.value);
-  document.getElementById('weightField').classList.toggle('is-hidden', !byWeight);
-  document.getElementById('itemsField').classList.toggle('is-hidden', byWeight);
-});
+const loadTypeField = document.getElementById('loadType');
+const washMachineField = document.getElementById('washMachineField');
+const dryMachineField = document.getElementById('dryMachineField');
+
+function updateOrderFormFields() {
+  const loadType = loadTypeField.value;
+
+  const needsWeight = ['wash_fold', 'wash_only', 'dry_only', 'fold_only'].includes(loadType);
+  const needsWashMachine = ['wash_fold', 'wash_only'].includes(loadType);
+  const needsDryMachine = ['wash_fold', 'dry_only'].includes(loadType);
+
+  document.getElementById('weightField').classList.toggle('is-hidden', !needsWeight);
+  document.getElementById('itemsField').classList.toggle('is-hidden', needsWeight);
+
+  washMachineField.classList.toggle('is-hidden', !needsWashMachine);
+  dryMachineField.classList.toggle('is-hidden', !needsDryMachine);
+}
+
+loadTypeField.addEventListener('change', updateOrderFormFields);
+updateOrderFormFields();
 
 document.getElementById('openNewOrder').addEventListener('click', () => {
   formErrors.textContent = '';
@@ -271,15 +286,35 @@ newOrderForm.addEventListener('submit', async (event) => {
   formErrors.textContent = '';
 
   const data = Object.fromEntries(new FormData(newOrderForm));
-  const byWeight = ['wash_fold', 'wash_only', 'dry_only', 'fold_only'].includes(data.load_type);  if (byWeight) delete data.item_count;
-  else delete data.weight_kg;
+
+  const byWeight = [
+    'wash_fold',
+    'wash_only',
+    'dry_only',
+    'fold_only',
+  ].includes(data.load_type);
+
+  if (byWeight) {
+    delete data.item_count;
+  } else {
+    delete data.weight_kg;
+  }
 
   try {
-    const { order } = await api('/api/orders', { method: 'POST', body: JSON.stringify(data) });
+    const { order } = await api('/api/orders', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+
     newOrderDialog.close();
     newOrderForm.reset();
+    updateOrderFormFields();
+
     await loadOrders();
-    setFeedback(`Order #${order.id} logged for ${order.customer_name}`);
+
+    setFeedback(
+      `Order #${order.id} logged for ${order.customer_name} — ₱${Number(order.price).toFixed(2)}`,
+    );
   } catch (err) {
     formErrors.textContent = err.message;
   }

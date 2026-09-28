@@ -7,6 +7,7 @@ const assert = require('node:assert/strict');
 const { splitLoadWeight } = require('../src/utils/loadSplitter');
 const {
   calculateServicePrice,
+  calculateLoadCount,
   calculateOrderPrice,
 } = require('../src/utils/pricing');
 
@@ -162,27 +163,32 @@ test('calculates folding pricing by load', () => {
   assert.equal(calculateServicePrice('fold', 'regular', 4), 80);
 });
 
-test('calculates wash only order pricing', () => {
+test('calculates load counts from machine capacity', () => {
+  assert.equal(calculateLoadCount(8, 'regular'), 1);
+  assert.equal(calculateLoadCount(9, 'regular'), 2);
+  assert.equal(calculateLoadCount(10, 'titan'), 1);
+  assert.equal(calculateLoadCount(18, 'titan'), 2);
+});
+
+test('calculates wash-only order pricing from weight and machine type', () => {
   assert.equal(
     calculateOrderPrice({
+      loadType: 'wash_only',
+      weightKg: 18,
       washMachineType: 'regular',
-      loadCount: 2,
-      includeWash: true,
     }),
-    140,
+    210,
   );
 });
 
-test('calculates wash plus dry plus fold pricing', () => {
+test('calculates wash-fold order pricing from selected machines', () => {
   assert.equal(
     calculateOrderPrice({
+      loadType: 'wash_fold',
+      weightKg: 8,
       washMachineType: 'regular',
-      dryMachineType: 'titan',
-      loadCount: 2,
-      includeWash: true,
-      includeDry: true,
-      includeFold: true,
+      dryMachineType: 'regular',
     }),
-    400,
+    180,
   );
 });

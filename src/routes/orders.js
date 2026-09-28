@@ -1,8 +1,9 @@
-'use strict';
+"use strict";
 
-const express = require('express');
-const db = require('../db');
-const { HttpError, asyncHandler } = require('../middleware/httpError');
+const express = require("express");
+const db = require("../db");
+const { HttpError, asyncHandler } = require("../middleware/httpError");
+const { calculateOrderPrice } = require("../utils/pricing");
 const {
   STATUSES,
   parseId,
@@ -10,8 +11,8 @@ const {
   validateStatusChange,
   validatePayment,
   validateMachineLoad,
-} = require('../validators/orderValidators');
-const { splitLoadWeight } = require('../utils/loadSplitter');
+} = require("../validators/orderValidators");
+const { splitLoadWeight } = require("../utils/loadSplitter");
 
 const router = express.Router();
 
@@ -42,29 +43,37 @@ const ORDER_SELECT = `
  * The filter tabs on the order list use this.
  */
 router.get(
-  '/',
+  "/",
   asyncHandler(async (req, res) => {
     const { status, q } = req.query;
     const conditions = [];
     const params = [];
 
-    if (status && status !== 'all') {
+    if (status && status !== "all") {
       if (!STATUSES.includes(status)) {
-        throw new HttpError(400, 'Validation failed', [
-          { field: 'status', message: `status must be one of: all, ${STATUSES.join(', ')}` },
+        throw new HttpError(400, "Validation failed", [
+          {
+            field: "status",
+            message: `status must be one of: all, ${STATUSES.join(", ")}`,
+          },
         ]);
       }
       params.push(status);
       conditions.push(`o.status = $${params.length}`);
     }
 
-    if (q && String(q).trim() !== '') {
+    if (q && String(q).trim() !== "") {
       params.push(`%${String(q).trim()}%`);
-      conditions.push(`(c.name ILIKE $${params.length} OR c.phone ILIKE $${params.length})`);
+      conditions.push(
+        `(c.name ILIKE $${params.length} OR c.phone ILIKE $${params.length})`,
+      );
     }
 
-    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
-    const { rows } = await db.query(`${ORDER_SELECT} ${where} ORDER BY o.created_at DESC`, params);
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    const { rows } = await db.query(
+      `${ORDER_SELECT} ${where} ORDER BY o.created_at DESC`,
+      params,
+    );
 
     res.json({ count: rows.length, orders: rows });
   }),
@@ -75,9 +84,9 @@ router.get(
  * One order with its customer, its status timeline and its payment.
  */
 router.get(
-  '/:id',
+  "/:id",
   asyncHandler(async (req, res) => {
-    const id = parseId(req.params.id, 'order id');
+    const id = parseId(req.params.id, "order id");
 
     const { rows } = await db.query(`${ORDER_SELECT} WHERE o.id = $1`, [id]);
     if (rows.length === 0) {
@@ -85,7 +94,7 @@ router.get(
     }
 
     const history = await db.query(
-      'SELECT status, note, changed_at FROM order_status_history WHERE order_id = $1 ORDER BY changed_at',
+      "SELECT status, note, changed_at FROM order_status_history WHERE order_id = $1 ORDER BY changed_at",
       [id],
     );
 
@@ -100,26 +109,39 @@ router.get(
  * half-written order can never be left behind.
  */
 router.post(
-  '/',
+  "/",
   asyncHandler(async (req, res) => {
     const input = validateNewOrder(req.body);
+
+    const price = calculateOrderPrice({
+      loadType: input.loadType,
+      weightKg: input.weightKg,
+      washMachineType: input.washMachineType,
+      dryMachineType: input.dryMachineType,
+    });
 
     const order = await db.withTransaction(async (client) => {
       let customerId = input.customerId;
 
       if (customerId === null) {
-        const existing = await client.query('SELECT id FROM customers WHERE phone = $1', [input.phone]);
+        const existing = await client.query(
+          "SELECT id FROM customers WHERE phone = $1",
+          [input.phone],
+        );
         if (existing.rows.length > 0) {
           customerId = existing.rows[0].id;
         } else {
           const created = await client.query(
-            'INSERT INTO customers (name, phone) VALUES ($1, $2) RETURNING id',
+            "INSERT INTO customers (name, phone) VALUES ($1, $2) RETURNING id",
             [input.name, input.phone],
           );
           customerId = created.rows[0].id;
         }
       } else {
-        const found = await client.query('SELECT id FROM customers WHERE id = $1', [customerId]);
+        const found = await client.query(
+          "SELECT id FROM customers WHERE id = $1",
+          [customerId],
+        );
         if (found.rows.length === 0) {
           throw new HttpError(404, `No customer with id ${customerId}`);
         }
@@ -129,16 +151,25 @@ router.post(
         `INSERT INTO orders (customer_id, load_type, weight_kg, item_count, price, note)
          VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING id`,
-        [customerId, input.loadType, input.weightKg, input.itemCount, input.price, input.note],
+        [
+          customerId,
+          input.loadType,
+          input.weightKg,
+          input.itemCount,
+          price,
+          input.note,
+        ],
       );
       const orderId = inserted.rows[0].id;
 
       await client.query(
-        'INSERT INTO order_status_history (order_id, status, note) VALUES ($1, $2, $3)',
-        [orderId, 'received', 'Dropped off at counter'],
+        "INSERT INTO order_status_history (order_id, status, note) VALUES ($1, $2, $3)",
+        [orderId, "received", "Dropped off at counter"],
       );
 
-      const full = await client.query(`${ORDER_SELECT} WHERE o.id = $1`, [orderId]);
+      const full = await client.query(`${ORDER_SELECT} WHERE o.id = $1`, [
+        orderId,
+      ]);
       return full.rows[0];
     });
 
@@ -151,21 +182,29 @@ router.post(
  * Moves an order one step along received -> washing -> ready -> picked up.
  */
 router.patch(
-  '/:id/status',
+  "/:id/status",
   asyncHandler(async (req, res) => {
-    const id = parseId(req.params.id, 'order id');
+    const id = parseId(req.params.id, "order id");
 
-    const current = await db.query('SELECT status FROM orders WHERE id = $1', [id]);
+    const current = await db.query("SELECT status FROM orders WHERE id = $1", [
+      id,
+    ]);
     if (current.rows.length === 0) {
       throw new HttpError(404, `No order with id ${id}`);
     }
 
-    const { status, note } = validateStatusChange(current.rows[0].status, req.body);
+    const { status, note } = validateStatusChange(
+      current.rows[0].status,
+      req.body,
+    );
 
     const order = await db.withTransaction(async (client) => {
-      await client.query('UPDATE orders SET status = $1, updated_at = now() WHERE id = $2', [status, id]);
       await client.query(
-        'INSERT INTO order_status_history (order_id, status, note) VALUES ($1, $2, $3)',
+        "UPDATE orders SET status = $1, updated_at = now() WHERE id = $2",
+        [status, id],
+      );
+      await client.query(
+        "INSERT INTO order_status_history (order_id, status, note) VALUES ($1, $2, $3)",
         [id, status, note],
       );
       const full = await client.query(`${ORDER_SELECT} WHERE o.id = $1`, [id]);
@@ -181,12 +220,12 @@ router.patch(
  * Records payment for an order. One payment per order for now.
  */
 router.post(
-  '/:id/payment',
+  "/:id/payment",
   asyncHandler(async (req, res) => {
-    const id = parseId(req.params.id, 'order id');
+    const id = parseId(req.params.id, "order id");
     const { amount, method } = validatePayment(req.body);
 
-    const order = await db.query('SELECT id FROM orders WHERE id = $1', [id]);
+    const order = await db.query("SELECT id FROM orders WHERE id = $1", [id]);
     if (order.rows.length === 0) {
       throw new HttpError(404, `No order with id ${id}`);
     }
@@ -203,9 +242,9 @@ router.post(
 );
 
 router.get(
-  '/:id/load-plan',
+  "/:id/load-plan",
   asyncHandler(async (req, res) => {
-    const orderId = parseId(req.params.id, 'order_id');
+    const orderId = parseId(req.params.id, "order_id");
 
     const { rows } = await db.query(
       `SELECT id, weight_kg
@@ -221,16 +260,13 @@ router.get(
     const weightKg = Number(rows[0].weight_kg);
 
     if (!Number.isFinite(weightKg) || weightKg <= 0) {
-      throw new HttpError(409, 'This order does not have a valid weight');
+      throw new HttpError(409, "This order does not have a valid weight");
     }
 
     const capacityKg = Number(req.query.capacity_kg);
 
     if (!Number.isFinite(capacityKg) || capacityKg <= 0) {
-      throw new HttpError(
-        400,
-        'capacity_kg must be a number greater than 0',
-      );
+      throw new HttpError(400, "capacity_kg must be a number greater than 0");
     }
 
     const loads = splitLoadWeight(weightKg, capacityKg);
@@ -246,15 +282,17 @@ router.get(
 );
 
 router.post(
-  '/:id/loads',
+  "/:id/loads",
   asyncHandler(async (req, res) => {
-    const orderId = parseId(req.params.id, 'order_id');
-    const { machineId, loadNumber, weightKg, notes } = validateMachineLoad(req.body);
+    const orderId = parseId(req.params.id, "order_id");
+    const { machineId, loadNumber, weightKg, notes } = validateMachineLoad(
+      req.body,
+    );
 
     const client = await db.pool.connect();
 
     try {
-      await client.query('BEGIN');
+      await client.query("BEGIN");
 
       const orderResult = await client.query(
         `SELECT id, weight_kg
@@ -281,8 +319,8 @@ router.post(
 
       const machine = machineResult.rows[0];
 
-      if (machine.status === 'maintenance') {
-        throw new HttpError(409, 'This machine is currently in maintenance');
+      if (machine.status === "maintenance") {
+        throw new HttpError(409, "This machine is currently in maintenance");
       }
 
       if (weightKg > Number(machine.capacity_kg)) {
@@ -302,7 +340,7 @@ router.post(
       );
 
       if (existingLoad.rowCount > 0) {
-        throw new HttpError(409, 'This machine already has an active load');
+        throw new HttpError(409, "This machine already has an active load");
       }
 
       const loadResult = await client.query(
@@ -314,11 +352,11 @@ router.post(
         [orderId, machineId, loadNumber, weightKg, notes],
       );
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       res.status(201).json({ load: loadResult.rows[0] });
     } catch (err) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       throw err;
     } finally {
       client.release();
@@ -327,25 +365,25 @@ router.post(
 );
 
 router.patch(
-  '/:orderId/loads/:loadId/status',
+  "/:orderId/loads/:loadId/status",
   asyncHandler(async (req, res) => {
-    const orderId = parseId(req.params.orderId, 'order_id');
-    const loadId = parseId(req.params.loadId, 'load_id');
+    const orderId = parseId(req.params.orderId, "order_id");
+    const loadId = parseId(req.params.loadId, "load_id");
 
-    const allowedStatuses = ['queued', 'running', 'completed'];
-    const nextStatus = String(req.body.status || '').trim();
+    const allowedStatuses = ["queued", "running", "completed"];
+    const nextStatus = String(req.body.status || "").trim();
 
     if (!allowedStatuses.includes(nextStatus)) {
       throw new HttpError(
         400,
-        'status must be one of: queued, running, completed',
+        "status must be one of: queued, running, completed",
       );
     }
 
     const client = await db.pool.connect();
 
     try {
-      await client.query('BEGIN');
+      await client.query("BEGIN");
 
       const loadResult = await client.query(
         `SELECT ml.id,
@@ -371,8 +409,8 @@ router.patch(
       const load = loadResult.rows[0];
 
       const validTransitions = {
-        queued: ['running'],
-        running: ['completed'],
+        queued: ["running"],
+        running: ["completed"],
         completed: [],
       };
 
@@ -380,22 +418,19 @@ router.patch(
         throw new HttpError(
           409,
           `A ${load.status} load can only move to ${
-            validTransitions[load.status].join(', ') || 'no further status'
+            validTransitions[load.status].join(", ") || "no further status"
           }`,
         );
       }
 
-      if (nextStatus === 'running' && load.machine_status === 'maintenance') {
-        throw new HttpError(
-          409,
-          'This machine is currently in maintenance',
-        );
+      if (nextStatus === "running" && load.machine_status === "maintenance") {
+        throw new HttpError(409, "This machine is currently in maintenance");
       }
 
       let updateQuery;
       let updateParams;
 
-      if (nextStatus === 'running') {
+      if (nextStatus === "running") {
         updateQuery = `
           UPDATE machine_loads
           SET status = 'running',
@@ -433,11 +468,11 @@ router.patch(
 
       const updatedLoad = await client.query(updateQuery, updateParams);
 
-      await client.query('COMMIT');
+      await client.query("COMMIT");
 
       res.json({ load: updatedLoad.rows[0] });
     } catch (err) {
-      await client.query('ROLLBACK');
+      await client.query("ROLLBACK");
       throw err;
     } finally {
       client.release();
