@@ -190,3 +190,14 @@ I am not claiming that the supplied code is mine. The initial `c7df593` commit c
 - **Testing:** I manually verified `queued → running`, `running → completed`, automatic `started_at` and `completed_at` timestamps, the machine changing to `running` and then back to `available`, and rejection of an invalid completed-to-running transition. I also ran `npm test` with 5/5 tests passing and `npm run check` successfully.
 - **Commit:** `ff67583`
 - **Result:** Machine-load status tracking now works with validated status transitions and corresponding machine availability updates.
+
+### Kanban board and seven-stage order workflow
+
+* **AI tool:** ChatGPT
+* **Task:** I used ChatGPT to help me implement a Kanban board and update the order workflow to support seven stages, from new orders through completion.
+* **What I personally implemented:** I integrated the Kanban rendering, drag-and-drop handlers, and styling into the existing frontend by following and adapting the code provided during the ChatGPT session. I also applied the database migration and updated the existing status-related files.
+* **Existing code reused:** I reused the existing order cards, status labels, order detail dialog, status update API, and frontend styling.
+* **Database changes:** I added `db/migrations/003_update_order_statuses.sql` to migrate existing order and status-history values to the new seven-stage workflow. I also updated `db/schema.sql` for fresh database setups.
+* **Testing:** I verified that all seven Kanban columns display, orders appear under their current statuses, clicking an order opens its details, and drag-and-drop only allows moving an order forward to the next stage. I ran `npm test` with 17/17 tests passing, `npm run check` with 13 required files and 14 JavaScript syntax checks passing, and `git diff --check` successfully.
+* **Commit:** `e97bb86` — https://github.com/rnzcrt/LaundryLog/commit/e97bb86
+* **Result:** The Kanban board works locally and supports forward-only order progression through the seven workflow stages.
