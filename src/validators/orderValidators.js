@@ -2,8 +2,8 @@
 
 const { HttpError } = require('../middleware/httpError');
 
-const LOAD_TYPES = ['wash_fold', 'wash_only', 'dry_clean', 'press_only'];
-const WEIGHT_LOADS = ['wash_fold', 'wash_only'];
+const LOAD_TYPES = ['wash_fold', 'wash_only', 'dry_only', 'fold_only'];
+const WEIGHT_LOADS = LOAD_TYPES;
 const STATUSES = ['received', 'washing', 'ready', 'picked_up'];
 const PAYMENT_METHODS = ['cash', 'gcash', 'card'];
 

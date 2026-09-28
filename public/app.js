@@ -1,10 +1,10 @@
 'use strict';
 
 const LOAD_LABELS = {
-  wash_fold: 'Wash & fold',
-  wash_only: 'Wash only',
-  dry_clean: 'Dry clean',
-  press_only: 'Press only',
+  wash_fold: 'Wash + Dry + Fold',
+  wash_only: 'Wash Only',
+  dry_only: 'Dry Only',
+  fold_only: 'Fold Only',
 };
 
 const STATUS_LABELS = {
@@ -271,8 +271,7 @@ newOrderForm.addEventListener('submit', async (event) => {
   formErrors.textContent = '';
 
   const data = Object.fromEntries(new FormData(newOrderForm));
-  const byWeight = ['wash_fold', 'wash_only'].includes(data.load_type);
-  if (byWeight) delete data.item_count;
+  const byWeight = ['wash_fold', 'wash_only', 'dry_only', 'fold_only'].includes(data.load_type);  if (byWeight) delete data.item_count;
   else delete data.weight_kg;
 
   try {
