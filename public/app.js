@@ -8,21 +8,28 @@ const LOAD_LABELS = {
 };
 
 const STATUS_LABELS = {
-  received: "Received",
+  new: "New",
+  waiting: "Waiting",
   washing: "Washing",
+  drying: "Drying",
+  folding: "Folding",
   ready: "Ready",
-  picked_up: "Picked up",
+  completed: "Completed",
 };
 
 const NEXT_STATUS = {
-  received: "washing",
-  washing: "ready",
-  ready: "picked_up",
-  picked_up: null,
+  new: "waiting",
+  waiting: "washing",
+  washing: "drying",
+  drying: "folding",
+  folding: "ready",
+  ready: "completed",
+  completed: null,
 };
 
 const ordersEl = document.getElementById("orders");
 const filtersEl = document.getElementById("filters");
+const kanbanEl = document.getElementById("kanbanBoard");
 const feedbackEl = document.getElementById("feedback");
 const newOrderDialog = document.getElementById("newOrderDialog");
 const newOrderForm = document.getElementById("newOrderForm");
@@ -31,6 +38,7 @@ const detailDialog = document.getElementById("detailDialog");
 const detailBody = document.getElementById("detailBody");
 
 let activeStatus = "all";
+let currentKanbanOrders = [];
 
 /** Fetch wrapper that turns an API error body into a thrown Error. */
 async function api(path, options = {}) {
@@ -79,17 +87,144 @@ function formatDate(value) {
 
 async function loadOrders() {
   try {
-    const query = activeStatus === "all" ? "" : `?status=${activeStatus}`;
-    const { orders } = await api(`/api/orders${query}`);
-    renderOrders(orders);
+    const { orders } = await api("/api/orders");
+
+    renderKanban(orders);
+
+    const visibleOrders =
+      activeStatus === "all"
+        ? orders
+        : orders.filter((order) => order.status === activeStatus);
+
+    renderOrders(visibleOrders);
+
     setFeedback(
-      `${orders.length} order${orders.length === 1 ? "" : "s"} shown`,
+      `${visibleOrders.length} order${visibleOrders.length === 1 ? "" : "s"} shown`,
     );
   } catch (err) {
     ordersEl.innerHTML = "";
+    kanbanEl.innerHTML = "";
     setFeedback(err.message, true);
   }
 }
+
+
+const KANBAN_STATUSES = [
+  "new",
+  "waiting",
+  "washing",
+  "drying",
+  "folding",
+  "ready",
+  "completed",
+];
+
+function renderKanban(orders) {
+  kanbanEl.innerHTML = "";
+  currentKanbanOrders = orders;
+
+  for (const status of KANBAN_STATUSES) {
+    const column = document.createElement("section");
+    column.className = "kanban__column";
+    column.dataset.status = status;
+
+    const heading = document.createElement("div");
+    heading.className = "kanban__heading";
+
+    const title = document.createElement("span");
+    title.textContent = STATUS_LABELS[status];
+
+    const count = document.createElement("span");
+    count.className = "kanban__count";
+    count.textContent = orders.filter((order) => order.status === status).length;
+
+    heading.append(title, count);
+
+    const cards = document.createElement("div");
+    cards.className = "kanban__cards";
+
+    const stageOrders = orders.filter((order) => order.status === status);
+
+    for (const order of stageOrders) {
+      const card = document.createElement("button");
+      card.className = "card kanban__card";
+      card.type = "button";
+      card.draggable = status !== "completed";
+      card.dataset.orderId = order.id;
+      card.dataset.status = order.status;
+      card.addEventListener("click", () => openDetail(order.id));
+
+      const name = document.createElement("p");
+      name.className = "card__name";
+      name.textContent = order.customer_name;
+
+      const meta = document.createElement("p");
+      meta.className = "card__meta";
+      meta.textContent = `${LOAD_LABELS[order.load_type]}, ${measure(order)}`;
+
+      const price = document.createElement("p");
+      price.className = "card__price";
+      price.textContent = peso(order.price);
+
+      const tag = document.createElement("span");
+      tag.className = `tag tag--${order.status}`;
+      tag.textContent = STATUS_LABELS[order.status];
+
+      card.append(name, meta, price, tag);
+      cards.append(card);
+    }
+
+    if (stageOrders.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "kanban__empty";
+      empty.textContent = "No orders";
+      cards.append(empty);
+    }
+
+    column.append(heading, cards);
+    kanbanEl.append(column);
+  }
+}
+
+
+kanbanEl.addEventListener("dragstart", (event) => {
+  const card = event.target.closest(".kanban__card");
+  if (!card || !card.draggable) return;
+
+  event.dataTransfer.setData("text/plain", card.dataset.orderId);
+  event.dataTransfer.effectAllowed = "move";
+});
+
+kanbanEl.addEventListener("dragover", (event) => {
+  const column = event.target.closest(".kanban__column");
+  if (!column) return;
+
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "move";
+});
+
+kanbanEl.addEventListener("drop", async (event) => {
+  const column = event.target.closest(".kanban__column");
+  if (!column) return;
+
+  event.preventDefault();
+
+  const orderId = event.dataTransfer.getData("text/plain");
+  const order = currentKanbanOrders.find(
+    (item) => String(item.id) === orderId,
+  );
+
+  if (!order) return;
+
+  const destination = column.dataset.status;
+
+  if (NEXT_STATUS[order.status] !== destination) {
+    setFeedback("Orders can only move one stage forward.", true);
+    return;
+  }
+
+  await changeStatus(order.id, destination);
+});
 
 function renderOrders(orders) {
   ordersEl.innerHTML = "";

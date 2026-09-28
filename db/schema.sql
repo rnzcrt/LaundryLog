@@ -27,8 +27,8 @@ CREATE TABLE orders (
     weight_kg    NUMERIC(5, 2) CHECK (weight_kg > 0),
     item_count   INTEGER CHECK (item_count > 0),
     price        NUMERIC(8, 2) NOT NULL CHECK (price >= 0),
-    status       TEXT NOT NULL DEFAULT 'received'
-                 CHECK (status IN ('received', 'washing', 'ready', 'picked_up')),
+    status       TEXT NOT NULL DEFAULT 'new'
+                 CHECK (status IN ('new', 'waiting', 'washing', 'drying', 'folding', 'ready', 'completed')),
     note         TEXT,
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
     updated_at   TIMESTAMPTZ NOT NULL DEFAULT now(),
@@ -48,7 +48,7 @@ CREATE INDEX orders_created_at_idx ON orders (created_at DESC);
 CREATE TABLE order_status_history (
     id          SERIAL PRIMARY KEY,
     order_id    INTEGER NOT NULL REFERENCES orders (id) ON DELETE CASCADE,
-    status      TEXT NOT NULL CHECK (status IN ('received', 'washing', 'ready', 'picked_up')),
+    status      TEXT NOT NULL CHECK (status IN ('new', 'waiting', 'washing', 'drying', 'folding', 'ready', 'completed')),
     note        TEXT,
     changed_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );

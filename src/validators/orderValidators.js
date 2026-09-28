@@ -4,15 +4,26 @@ const { HttpError } = require("../middleware/httpError");
 
 const LOAD_TYPES = ["wash_fold", "wash_only", "dry_only", "fold_only"];
 const WEIGHT_LOADS = LOAD_TYPES;
-const STATUSES = ["received", "washing", "ready", "picked_up"];
+const STATUSES = [
+  "new",
+  "waiting",
+  "washing",
+  "drying",
+  "folding",
+  "ready",
+  "completed",
+];
 const PAYMENT_METHODS = ["cash", "gcash", "card"];
 
-/** received -> washing -> ready -> picked_up, one step at a time. */
+/** new -> waiting -> washing -> drying -> folding -> ready -> completed. */
 const NEXT_STATUS = {
-  received: "washing",
-  washing: "ready",
-  ready: "picked_up",
-  picked_up: null,
+  new: "waiting",
+  waiting: "washing",
+  washing: "drying",
+  drying: "folding",
+  folding: "ready",
+  ready: "completed",
+  completed: null,
 };
 
 function fail(errors) {
@@ -161,7 +172,7 @@ function validateStatusChange(currentStatus, body = {}) {
       409,
       expected
         ? `An order that is ${currentStatus.replace("_", " ")} can only move to ${expected.replace("_", " ")}`
-        : "This order is already picked up and cannot change again",
+        : "This order is completed and cannot change again",
     );
   }
 

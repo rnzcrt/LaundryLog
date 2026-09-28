@@ -169,7 +169,7 @@ router.post(
 
       await client.query(
         "INSERT INTO order_status_history (order_id, status, note) VALUES ($1, $2, $3)",
-        [orderId, "received", "Dropped off at counter"],
+        [orderId, "new", "Dropped off at counter"],
       );
 
       const full = await client.query(`${ORDER_SELECT} WHERE o.id = $1`, [
@@ -184,7 +184,7 @@ router.post(
 
 /**
  * PATCH /api/orders/:id/status
- * Moves an order one step along received -> washing -> ready -> picked up.
+ * Moves an order one step along new -> waiting -> washing -> drying -> folding -> ready -> completed.
  */
 router.patch(
   "/:id/status",

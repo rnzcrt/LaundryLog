@@ -1,9 +1,12 @@
-'use strict';
+"use strict";
 
-const express = require('express');
-const db = require('../db');
-const { HttpError, asyncHandler } = require('../middleware/httpError');
-const { parseId, validateNewCustomer } = require('../validators/orderValidators');
+const express = require("express");
+const db = require("../db");
+const { HttpError, asyncHandler } = require("../middleware/httpError");
+const {
+  parseId,
+  validateNewCustomer,
+} = require("../validators/orderValidators");
 
 const router = express.Router();
 
@@ -12,13 +15,13 @@ const router = express.Router();
  * The counter directory: who has been here, and how much they have open.
  */
 router.get(
-  '/',
+  "/",
   asyncHandler(async (req, res) => {
     const { q } = req.query;
     const params = [];
-    let where = '';
+    let where = "";
 
-    if (q && String(q).trim() !== '') {
+    if (q && String(q).trim() !== "") {
       params.push(`%${String(q).trim()}%`);
       where = `WHERE c.name ILIKE $1 OR c.phone ILIKE $1`;
     }
@@ -30,8 +33,7 @@ router.get(
               c.notes,
               c.created_at,
               COUNT(o.id)::int AS order_count,
-              COUNT(o.id) FILTER (WHERE o.status <> 'picked_up')::int AS open_order_count
-       FROM customers c
+              COUNT(o.id) FILTER (WHERE o.status <> 'completed')::int AS open_order_count       FROM customers c
        LEFT JOIN orders o ON o.customer_id = c.id
        ${where}
        GROUP BY c.id
@@ -45,12 +47,12 @@ router.get(
 
 /** GET /api/customers/:id - one customer and their order history. */
 router.get(
-  '/:id',
+  "/:id",
   asyncHandler(async (req, res) => {
-    const id = parseId(req.params.id, 'customer id');
+    const id = parseId(req.params.id, "customer id");
 
     const customer = await db.query(
-      'SELECT id, name, phone, notes, created_at FROM customers WHERE id = $1',
+      "SELECT id, name, phone, notes, created_at FROM customers WHERE id = $1",
       [id],
     );
     if (customer.rows.length === 0) {
@@ -69,7 +71,7 @@ router.get(
 
 /** POST /api/customers - add a customer without starting an order. */
 router.post(
-  '/',
+  "/",
   asyncHandler(async (req, res) => {
     const { name, phone, notes } = validateNewCustomer(req.body);
 
@@ -80,7 +82,10 @@ router.post(
       [name, phone, notes],
     );
 
-    res.status(201).location(`/api/customers/${rows[0].id}`).json({ customer: rows[0] });
+    res
+      .status(201)
+      .location(`/api/customers/${rows[0].id}`)
+      .json({ customer: rows[0] });
   }),
 );
 

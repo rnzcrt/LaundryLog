@@ -17,16 +17,30 @@
     <main class="page">
       <nav class="filters" id="filters" aria-label="Filter orders by status">
         <button class="filter is-active" data-status="all">All</button>
-        <button class="filter" data-status="received">Received</button>
+        <button class="filter" data-status="new">New</button>
+        <button class="filter" data-status="waiting">Waiting</button>
         <button class="filter" data-status="washing">Washing</button>
+        <button class="filter" data-status="drying">Drying</button>
+        <button class="filter" data-status="folding">Folding</button>
         <button class="filter" data-status="ready">Ready</button>
-        <button class="filter" data-status="picked_up">Picked up</button>
+        <button class="filter" data-status="completed">Completed</button>
       </nav>
 
       <p class="feedback" id="feedback" role="status"></p>
 
-      <section class="orders" id="orders" aria-live="polite"></section>
+      <section class="kanban-section">
+        <h2>Kanban Board</h2>
+        <div
+          class="kanban"
+          id="kanbanBoard"
+          aria-label="Orders by workflow status"
+        ></div>
+      </section>
 
+      <section class="orders-section">
+        <h2>All Orders</h2>
+        <section class="orders" id="orders" aria-live="polite"></section>
+      </section>
       <section class="customers-section">
         <h2>Customers</h2>
 
