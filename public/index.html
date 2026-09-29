@@ -81,6 +81,57 @@
 
         <div id="customers" aria-live="polite"></div>
       </section>
+      <section class="products-section">
+        <h2>Products &amp; Soaps Inventory</h2>
+
+        <form id="productForm" class="form">
+          <label class="field">
+            <span>Product name</span>
+            <input id="productName" name="name" type="text" required />
+          </label>
+
+          <label class="field">
+            <span>Unit</span>
+            <input
+              id="productUnit"
+              name="unit"
+              type="text"
+              placeholder="e.g. liters, kg, bottles"
+              required
+            />
+          </label>
+
+          <label class="field">
+            <span>Stock quantity</span>
+            <input
+              id="productStock"
+              name="stock_quantity"
+              type="number"
+              min="0"
+              step="0.01"
+              value="0"
+              required
+            />
+          </label>
+
+          <label class="field">
+            <span>Low-stock threshold</span>
+            <input
+              id="productThreshold"
+              name="low_stock_threshold"
+              type="number"
+              min="0"
+              step="0.01"
+              value="5"
+              required
+            />
+          </label>
+
+          <button type="submit">Add product</button>
+        </form>
+
+        <div id="products" aria-live="polite"></div>
+      </section>
     </main>
 
     <!-- New order -->

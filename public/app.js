@@ -580,3 +580,114 @@ customersEl.addEventListener("click", (event) => {
 
   openCustomerHistory(button.dataset.customerId);
 });
+
+const productForm = document.getElementById("productForm");
+const productsEl = document.getElementById("products");
+
+async function loadProducts() {
+  const data = await api("/api/products");
+  return data.products;
+}
+
+function renderProducts(products) {
+  if (!products.length) {
+    productsEl.innerHTML = "<p>No products added yet.</p>";
+    return;
+  }
+
+  productsEl.innerHTML = products
+    .map((product) => {
+      const lowStock =
+        Number(product.stock_quantity) <=
+        Number(product.low_stock_threshold);
+
+      return `
+        <article class="customer-card product-card">
+          <h3>${escapeHtml(product.name)}</h3>
+          <p>Stock: ${Number(product.stock_quantity)} ${escapeHtml(product.unit)}</p>
+          <p>Low-stock threshold: ${Number(product.low_stock_threshold)} ${escapeHtml(product.unit)}</p>
+          <p class="${lowStock ? "is-error" : ""}">
+            ${lowStock ? "Low stock" : "In stock"}
+          </p>
+
+          <form class="product-stock-form" data-product-id="${product.id}">
+            <label class="field">
+              <span>Update stock</span>
+              <input
+                type="number"
+                name="stock_quantity"
+                min="0"
+                step="0.01"
+                value="${Number(product.stock_quantity)}"
+                required
+              />
+            </label>
+            <button type="submit">Save stock</button>
+          </form>
+        </article>
+      `;
+    })
+    .join("");
+}
+productsEl.addEventListener("submit", async (event) => {
+  const form = event.target.closest(".product-stock-form");
+  if (!form) return;
+
+  event.preventDefault();
+
+  const id = form.dataset.productId;
+  const stock = Number(form.elements.stock_quantity.value);
+
+  try {
+    await api(`/api/products/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ stock_quantity: stock }),
+    });
+
+    setFeedback("Stock updated successfully.");
+    await refreshProducts();
+  } catch (err) {
+    setFeedback(err.message, true);
+  }
+});
+
+async function refreshProducts() {
+  try {
+    const products = await loadProducts();
+    renderProducts(products);
+  } catch (err) {
+    productsEl.innerHTML = "<p>Unable to load products.</p>";
+    console.error("Product load failed:", err);
+  }
+}
+
+productForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const product = {
+    name: document.getElementById("productName").value.trim(),
+    unit: document.getElementById("productUnit").value.trim(),
+    stock_quantity: Number(document.getElementById("productStock").value),
+    low_stock_threshold: Number(
+      document.getElementById("productThreshold").value,
+    ),
+  };
+
+  try {
+    await api("/api/products", {
+      method: "POST",
+      body: JSON.stringify(product),
+    });
+
+    productForm.reset();
+    document.getElementById("productStock").value = "0";
+    document.getElementById("productThreshold").value = "5";
+
+    setFeedback("Product added successfully.");
+    await refreshProducts();
+  } catch (err) {
+    setFeedback(err.message, true);
+  }
+});
+
+refreshProducts();
