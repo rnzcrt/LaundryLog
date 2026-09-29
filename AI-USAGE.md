@@ -201,3 +201,13 @@ I am not claiming that the supplied code is mine. The initial `c7df593` commit c
 * **Testing:** I verified that all seven Kanban columns display, orders appear under their current statuses, clicking an order opens its details, and drag-and-drop only allows moving an order forward to the next stage. I ran `npm test` with 17/17 tests passing, `npm run check` with 13 required files and 14 JavaScript syntax checks passing, and `git diff --check` successfully.
 * **Commit:** `e97bb86` — https://github.com/rnzcrt/LaundryLog/commit/e97bb86
 * **Result:** The Kanban board works locally and supports forward-only order progression through the seven workflow stages.
+
+### Dashboard metrics and styling
+
+* **AI tool:** ChatGPT
+* **Task:** I used ChatGPT to help me implement a Dashboard displaying order totals, revenue, collections, and outstanding balances.
+* **What I personally implemented:** I added the Dashboard section to `public/index.html`, implemented the `renderDashboard()` function and connected it to `loadOrders()` in `public/app.js`, and added responsive Dashboard card styling in `public/styles.css`, following and adapting the code provided during the ChatGPT session.
+* **Existing code reused:** I reused the existing orders API, order data, payment fields, `peso()` formatting function, and LaundryLog design-system CSS variables.
+* **Testing:** I verified that the Dashboard displays 11 orders, ₱4,174.00 in revenue, ₱574.00 in collections, and ₱3,600.00 in outstanding balances. I ran `npm test` with 17/17 tests passing, `npm run check` with 13 required files and 14 JavaScript syntax checks passing, and `git diff --check` successfully.
+* **Commit:** `18ca6f2`
+* **Result:** The Dashboard displays all-time order totals, revenue, collections, and outstanding balances, with responsive styling for smaller screens.
