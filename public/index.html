@@ -15,6 +15,31 @@
     </header>
 
     <main class="page">
+      <section class="dashboard-section">
+        <h2>Dashboard</h2>
+
+        <div class="dashboard-grid">
+          <article class="dashboard-card">
+            <h3>Total Orders</h3>
+            <p id="totalOrders">0</p>
+          </article>
+
+          <article class="dashboard-card">
+            <h3>Revenue</h3>
+            <p id="totalRevenue">₱0.00</p>
+          </article>
+
+          <article class="dashboard-card">
+            <h3>Collections</h3>
+            <p id="totalCollections">₱0.00</p>
+          </article>
+
+          <article class="dashboard-card">
+            <h3>Outstanding</h3>
+            <p id="outstandingBalance">₱0.00</p>
+          </article>
+        </div>
+      </section>
       <nav class="filters" id="filters" aria-label="Filter orders by status">
         <button class="filter is-active" data-status="all">All</button>
         <button class="filter" data-status="new">New</button>

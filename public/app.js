@@ -89,6 +89,7 @@ async function loadOrders() {
   try {
     const { orders } = await api("/api/orders");
 
+    renderDashboard(orders);
     renderKanban(orders);
 
     const visibleOrders =
@@ -225,6 +226,32 @@ kanbanEl.addEventListener("drop", async (event) => {
 
   await changeStatus(order.id, destination);
 });
+
+function renderDashboard(orders) {
+  const totalOrders = orders.length;
+
+  const totalRevenue = orders.reduce(
+    (sum, order) => sum + Number(order.price || 0),
+    0,
+  );
+
+  const totalCollections = orders.reduce(
+    (sum, order) => sum + Number(order.paid_amount || 0),
+    0,
+  );
+
+  const outstandingBalance = orders.reduce(
+    (sum, order) => sum + Number(order.outstanding_amount || 0),
+    0,
+  );
+
+  document.getElementById("totalOrders").textContent = totalOrders;
+  document.getElementById("totalRevenue").textContent = peso(totalRevenue);
+  document.getElementById("totalCollections").textContent =
+    peso(totalCollections);
+  document.getElementById("outstandingBalance").textContent =
+    peso(outstandingBalance);
+}
 
 function renderOrders(orders) {
   ordersEl.innerHTML = "";
