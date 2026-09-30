@@ -534,26 +534,43 @@ function escapeHtml(value) {
 
 function renderCustomers(customers) {
   if (!customers.length) {
-    customersEl.innerHTML = "<p>No customers found.</p>";
+    customersEl.innerHTML = '<p class="empty">No customers found.</p>';
     return;
   }
 
-  customersEl.innerHTML = customers
-    .map(
-      (customer) => `
-    <article class="customer-card">
-      <h3>${escapeHtml(customer.name)}</h3>
-      <p>${escapeHtml(customer.phone)}</p>
-      <button
-        class="button button--secondary customer-history"
-        data-customer-id="${customer.id}"
-      >
-        View history
-      </button>
-    </article>
-  `,
-    )
-    .join("");
+  customersEl.innerHTML = `
+    <div class="customer-table-wrap">
+      <table class="customer-table">
+        <thead>
+          <tr>
+            <th>Customer</th>
+            <th>Phone number</th>
+            <th class="customer-actions-heading">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${customers
+            .map(
+              (customer) => `
+                <tr>
+                  <td class="customer-name">${escapeHtml(customer.name)}</td>
+                  <td>${escapeHtml(customer.phone)}</td>
+                  <td class="customer-actions">
+                    <button
+                      class="button button--secondary customer-history"
+                      data-customer-id="${customer.id}"
+                    >
+                      View history
+                    </button>
+                  </td>
+                </tr>
+              `,
+            )
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 async function refreshCustomers(query = "") {
@@ -589,73 +606,125 @@ async function loadProducts() {
 
 function renderProducts(products) {
   if (!products.length) {
-    productsEl.innerHTML = "<p>No products added yet.</p>";
+    productsEl.innerHTML = '<p class="empty">No products added yet.</p>';
     return;
   }
 
-  productsEl.innerHTML = products
-    .map((product) => {
-      const lowStock =
-        Number(product.stock_quantity) <= Number(product.low_stock_threshold);
+  productsEl.innerHTML = `
+    <div class="inventory-table-wrap">
+      <table class="inventory-table">
+        <thead>
+          <tr>
+            <th>Product</th>
+            <th>Stock</th>
+            <th>Status</th>
+            <th>Threshold</th>
+            <th class="inventory-actions-heading">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${products
+            .map((product) => {
+              const stock = Number(product.stock_quantity);
+              const threshold = Number(product.low_stock_threshold);
+              const lowStock = stock <= threshold;
+              const id = product.id;
+              const unit = escapeHtml(product.unit);
 
-      return `
-        <article class="customer-card product-card">
-          <h3>${escapeHtml(product.name)}</h3>
-          <p>Stock: ${Number(product.stock_quantity)} ${escapeHtml(product.unit)}</p>
-          <p>Low-stock threshold: ${Number(product.low_stock_threshold)} ${escapeHtml(product.unit)}</p>
-          <p class="${lowStock ? "is-error" : ""}">
-            ${lowStock ? "Low stock" : "In stock"}
-          </p>
+              return `
+              <tr>
+                <td class="inventory-product-name">
+                  ${escapeHtml(product.name)}
+                </td>
+                <td class="inventory-stock">
+                  ${stock} <span>${unit}</span>
+                </td>
+                <td>
+                  <span class="inventory-badge ${lowStock ? "inventory-badge--low" : "inventory-badge--good"}">
+                    ${lowStock ? "Low stock" : "In stock"}
+                  </span>
+                </td>
+                <td>${threshold} ${unit}</td>
+                <td class="inventory-actions">
+                  <details class="inventory-manage">
+                    <summary>Manage</summary>
+                    <div class="inventory-manage-panel">
+                    <button
+                      type="button"
+                      class="inventory-close-button"
+                      aria-label="Close manage menu"
+                      >×</button>
+                      <form class="product-stock-form" data-product-id="${id}">
+                        <h4>Manual adjustment</h4>
+                        <label class="field">
+                          <span>New stock quantity (${unit})</span>
+                          <input
+                            type="number"
+                            name="stock_quantity"
+                            min="0"
+                            step="0.01"
+                            value="${stock}"
+                            required
+                          />
+                        </label>
+                        <button class="button button--primary" type="submit">
+                          Save adjustment
+                        </button>
+                      </form>
 
-          <form class="product-stock-form" data-product-id="${product.id}">
-            <label class="field">
-              <span>Adjust stock manually</span>
-              <input
-                type="number"
-                name="stock_quantity"
-                min="0"
-                step="0.01"
-                value="${Number(product.stock_quantity)}"
-                required
-              />
-            </label>
-            <button type="submit">Save adjustment</button>
-          </form>
+                      <form class="product-movement-form" data-product-id="${id}" data-movement-type="stock_in">
+                        <h4>Stock in</h4>
+                        <label class="field">
+                          <span>Quantity to add (${unit})</span>
+                          <input type="number" name="quantity" min="0.01" step="0.01" required />
+                        </label>
+                        <label class="field">
+                          <span>Notes (optional)</span>
+                          <input type="text" name="notes" maxlength="500" />
+                        </label>
+                        <button class="button button--secondary" type="submit">
+                          Record stock-in
+                        </button>
+                      </form>
 
-          <form class="product-movement-form" data-product-id="${product.id}" data-movement-type="stock_in">
-            <h4>Stock in</h4>
-            <label class="field">
-              <span>Quantity to add (${escapeHtml(product.unit)})</span>
-              <input type="number" name="quantity" min="0.01" step="0.01" required />
-            </label>
-            <label class="field">
-              <span>Notes (optional)</span>
-              <input type="text" name="notes" maxlength="500" />
-            </label>
-            <button type="submit">Record stock-in</button>
-          </form>
+                      <form class="product-movement-form" data-product-id="${id}" data-movement-type="usage">
+                        <h4>Record usage</h4>
+                        <label class="field">
+                          <span>Quantity used (${unit})</span>
+                          <input type="number" name="quantity" min="0.01" step="0.01" required />
+                        </label>
+                        <label class="field">
+                          <span>Notes (optional)</span>
+                          <input type="text" name="notes" maxlength="500" />
+                        </label>
+                        <button class="button button--secondary" type="submit">
+                          Record usage
+                        </button>
+                      </form>
 
-          <form class="product-movement-form" data-product-id="${product.id}" data-movement-type="usage">
-            <h4>Record usage</h4>
-            <label class="field">
-              <span>Quantity used (${escapeHtml(product.unit)})</span>
-              <input type="number" name="quantity" min="0.01" step="0.01" required />
-            </label>
-            <label class="field">
-              <span>Notes (optional)</span>
-              <input type="text" name="notes" maxlength="500" />
-            </label>
-            <button type="submit">Record usage</button>
-          </form>
-
-          <button type="button" class="product-history-button" data-product-id="${product.id}">
-            Show movement history
-          </button>
-          <div class="product-history" id="product-history-${product.id}" aria-live="polite"></div>
-        </article>
-      `;
-    })
-    .join("");
+                      <button
+                        type="button"
+                        class="button button--secondary product-history-button"
+                        data-product-id="${id}"
+                      >
+                        Show movement history
+                      </button>
+                      <div
+                        class="product-history"
+                        id="product-history-${id}"
+                        aria-live="polite"
+                      ></div>
+                    </div>
+                  </details>
+                </td>
+              </tr>
+            `;
+            })
+            .join("")}
+        </tbody>
+      </table>
+    </div>
+  `;
 }
 
 productsEl.addEventListener("submit", async (event) => {
@@ -708,6 +777,51 @@ productsEl.addEventListener("submit", async (event) => {
 });
 
 productsEl.addEventListener("click", async (event) => {
+  const closeButton = event.target.closest(".inventory-close-button");
+
+  if (closeButton) {
+    closeButton.closest(".inventory-manage").open = false;
+    return;
+  }
+
+  const summary = event.target.closest(".inventory-manage summary");
+
+  if (summary) {
+    const details = summary.closest(".inventory-manage");
+
+    // Close other open Manage popups
+    productsEl.querySelectorAll(".inventory-manage[open]").forEach((item) => {
+      if (item !== details) item.open = false;
+    });
+
+    requestAnimationFrame(() => {
+      if (!details.open) return;
+
+      const panel = details.querySelector(".inventory-manage-panel");
+      const rect = summary.getBoundingClientRect();
+      const width = panel.offsetWidth;
+      const margin = 16;
+
+      const left = Math.max(
+        margin,
+        Math.min(rect.right - width, window.innerWidth - width - margin),
+      );
+
+      const top = Math.max(
+        margin,
+        Math.min(
+          rect.bottom + 8,
+          window.innerHeight - panel.offsetHeight - margin,
+        ),
+      );
+
+      panel.style.left = `${left}px`;
+      panel.style.top = `${top}px`;
+    });
+
+    return;
+  }
+
   const button = event.target.closest(".product-history-button");
   if (!button) return;
 
@@ -744,14 +858,14 @@ productsEl.addEventListener("click", async (event) => {
                     : "Adjustment";
 
               return `
-              <li>
-                <strong>${escapeHtml(type)}</strong>:
-                ${Number(movement.quantity)}
-                <br />
-                <small>${escapeHtml(date)}</small>
-                ${movement.notes ? `<p>${escapeHtml(movement.notes)}</p>` : ""}
-              </li>
-            `;
+                <li>
+                  <strong>${escapeHtml(type)}</strong>:
+                  ${Number(movement.quantity)}
+                  <br />
+                  <small>${escapeHtml(date)}</small>
+                  ${movement.notes ? `<p>${escapeHtml(movement.notes)}</p>` : ""}
+                </li>
+              `;
             })
             .join("")}
         </ul>
@@ -764,6 +878,24 @@ productsEl.addEventListener("click", async (event) => {
     historyEl.textContent = err.message || "Unable to load history.";
   } finally {
     button.disabled = false;
+  }
+});
+
+// Close Manage popup when clicking outside
+document.addEventListener("click", (event) => {
+  if (event.target.closest(".inventory-manage")) return;
+
+  productsEl.querySelectorAll(".inventory-manage[open]").forEach((item) => {
+    item.open = false;
+  });
+});
+
+// Close Manage popup with Escape
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    productsEl.querySelectorAll(".inventory-manage[open]").forEach((item) => {
+      item.open = false;
+    });
   }
 });
 
