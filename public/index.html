@@ -92,13 +92,16 @@
 
           <label class="field">
             <span>Unit</span>
-            <input
-              id="productUnit"
-              name="unit"
-              type="text"
-              placeholder="e.g. liters, kg, bottles"
-              required
-            />
+            <select id="productUnit" name="unit" required>
+              <option value="" disabled selected>Select a unit</option>
+              <option value="liters">Liters</option>
+              <option value="milliliters">Milliliters</option>
+              <option value="kilograms">Kilograms</option>
+              <option value="grams">Grams</option>
+              <option value="bottles">Bottles</option>
+              <option value="pieces">Pieces</option>
+              <option value="packs">Packs</option>
+            </select>
           </label>
 
           <label class="field">
