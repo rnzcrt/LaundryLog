@@ -211,3 +211,34 @@ I am not claiming that the supplied code is mine. The initial `c7df593` commit c
 * **Testing:** I verified that the Dashboard displays 11 orders, ₱4,174.00 in revenue, ₱574.00 in collections, and ₱3,600.00 in outstanding balances. I ran `npm test` with 17/17 tests passing, `npm run check` with 13 required files and 14 JavaScript syntax checks passing, and `git diff --check` successfully.
 * **Commit:** `18ca6f2`
 * **Result:** The Dashboard displays all-time order totals, revenue, collections, and outstanding balances, with responsive styling for smaller screens.
+
+### Products & Soaps Inventory
+
+* **AI tool:** ChatGPT
+* **Task:** I used ChatGPT to help me add product inventory management to LaundryLog so staff could track supplies used by the laundry shop.
+* **What I personally implemented:** I added the product inventory functionality by following and adapting the implementation guidance, including the product form, stock display, low-stock indicators, and stock editing.
+* **Database changes:** I added `db/migrations/004_add_products.sql` to create the products table.
+* **Existing code reused:** I reused the existing PostgreSQL connection, Express routing structure, frontend components, and application styling.
+* **Testing:** I tested adding and displaying products, editing stock, and checking the inventory after refreshing the page.
+* **Commit:** `844f1df` — https://github.com/rnzcrt/LaundryLog/commit/844f1df
+* **Result:** Staff can add products, track their stock quantities, and identify products that have reached their low-stock thresholds.
+
+### Product stock movement tracking
+
+* **AI tool:** ChatGPT
+* **Task:** I used ChatGPT to help me add a history of stock movements so inventory changes could be reviewed.
+* **What I personally implemented:** I added stock-in, usage, manual adjustment, and movement-history functionality by following and adapting the provided implementation guidance.
+* **Database changes:** I added `db/migrations/005_add_product_movements.sql` and `db/migrations/006_allow_product_adjustments.sql` to record product movements and support manual adjustments.
+* **Testing:** I verified stock-in increased the quantity, usage decreased it, and manual adjustments were recorded in the movement history. I also verified that usage exceeding available stock was rejected and did not change the stock quantity. I refreshed the page to confirm the data persisted.
+* **Commit:** `97e6926` — https://github.com/rnzcrt/LaundryLog/commit/97e6926
+* **Result:** Product stock changes are recorded with movement types, quantities, notes, and timestamps. The system prevents usage from reducing stock below zero.
+
+
+### Product unit dropdown
+
+* **AI tool:** ChatGPT
+* **Task:** I used ChatGPT to help me make product units selection-only to keep inventory entries consistent.
+* **What I personally implemented:** I changed the Unit field in `public/index.html` from a free-text input to a dropdown with predefined units: liters, milliliters, kilograms, grams, bottles, pieces, and packs.
+* **Testing:** I tested the dropdown locally, ran `npm test` with 17/17 tests passing, and ran `npm run check` successfully. I committed and pushed the change, then verified that the dropdown appeared correctly on the live Render site.
+* **Commit:** `2d05d5c` — https://github.com/rnzcrt/LaundryLog/commit/2d05d5c
+* **Result:** Staff can select a predefined unit instead of entering inconsistent free-text unit names.
