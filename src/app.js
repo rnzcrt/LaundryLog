@@ -10,6 +10,7 @@ const machinesRouter = require('./routes/machines');
 const { errorHandler, notFoundHandler } = require('./middleware/errorHandler');
 const basicAuth = require('./middleware/basicAuth');
 const productsRouter = require("./routes/products");
+const reportsRouter = require('./routes/reports');
 
 const app = express();
 
@@ -47,6 +48,7 @@ app.use('/api/orders', ordersRouter);
 app.use('/api/customers', customersRouter);
 app.use('/api/machines', machinesRouter);
 app.use('/api/products', productsRouter);
+app.use('/api/reports', reportsRouter);
 
 
 app.use(notFoundHandler);

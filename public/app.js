@@ -602,6 +602,85 @@ newOrderForm.addEventListener("submit", async (event) => {
   }
 });
 
+const reportForm = document.getElementById("reportForm");
+const reportFrom = document.getElementById("reportFrom");
+const reportTo = document.getElementById("reportTo");
+const reportSales = document.getElementById("reportSales");
+const reportCollections = document.getElementById("reportCollections");
+const reportOutstanding = document.getElementById("reportOutstanding");
+const reportDaily = document.getElementById("reportDaily");
+
+function manilaDateString() {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Manila",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+
+  const part = (type) => parts.find((item) => item.type === type).value;
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+async function loadReport() {
+  if (!reportFrom.value || !reportTo.value) return;
+
+  if (reportFrom.value > reportTo.value) {
+    setFeedback("Report start date must be on or before end date.", true);
+    return;
+  }
+
+  const params = new URLSearchParams({
+    from: reportFrom.value,
+    to: reportTo.value,
+  });
+
+  try {
+    const report = await api(`/api/reports/summary?${params.toString()}`);
+
+    reportSales.textContent = peso(report.sales);
+    reportCollections.textContent = peso(report.collections);
+    reportOutstanding.textContent = peso(report.outstanding);
+    reportDaily.replaceChildren();
+
+    if (!report.daily.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+      cell.colSpan = 3;
+      cell.textContent = "No activity in this date range.";
+      row.append(cell);
+      reportDaily.append(row);
+      return;
+    }
+
+    for (const day of report.daily) {
+      const row = document.createElement("tr");
+      const dateCell = document.createElement("td");
+      const salesCell = document.createElement("td");
+      const collectionsCell = document.createElement("td");
+
+      dateCell.textContent = day.date;
+      salesCell.textContent = peso(day.sales);
+      collectionsCell.textContent = peso(day.collections);
+
+      row.append(dateCell, salesCell, collectionsCell);
+      reportDaily.append(row);
+    }
+  } catch (err) {
+    setFeedback(err.message, true);
+  }
+}
+
+reportForm.addEventListener("submit", (event) => {
+  event.preventDefault();
+  loadReport();
+});
+
+const todayForReport = manilaDateString();
+reportFrom.value = todayForReport;
+reportTo.value = todayForReport;
+loadReport();
+
 loadOrders();
 
 const customerSearch = document.getElementById("customerSearch");

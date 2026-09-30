@@ -40,6 +40,54 @@
           </article>
         </div>
       </section>
+      <section class="reports-section">
+        <h2>Sales &amp; Collections Report</h2>
+        <form id="reportForm" class="form">
+          <label class="field">
+            <span>From</span>
+            <input id="reportFrom" type="date" required />
+          </label>
+          <label class="field">
+            <span>To</span>
+            <input id="reportTo" type="date" required />
+          </label>
+          <button class="button button--primary" type="submit">
+            Generate report
+          </button>
+        </form>
+
+        <div class="dashboard-grid">
+          <article class="dashboard-card">
+            <h3>Sales in Period</h3>
+            <p id="reportSales">₱0.00</p>
+          </article>
+          <article class="dashboard-card">
+            <h3>Collections in Period</h3>
+            <p id="reportCollections">₱0.00</p>
+          </article>
+          <article class="dashboard-card">
+            <h3>Outstanding on Period Orders</h3>
+            <p id="reportOutstanding">₱0.00</p>
+          </article>
+        </div>
+
+        <h3>Daily Breakdown</h3>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Sales</th>
+                <th scope="col">Collections</th>
+              </tr>
+            </thead>
+            <tbody id="reportDaily">
+              <tr><td colspan="3">Choose a date range to generate a report.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
       <nav class="filters" id="filters" aria-label="Filter orders by status">
         <button class="filter is-active" data-status="all">All</button>
         <button class="filter" data-status="new">New</button>

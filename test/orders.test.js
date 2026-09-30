@@ -192,3 +192,20 @@ test('calculates wash-fold order pricing from selected machines', () => {
     180,
   );
 });
+test('GET /api/reports/summary rejects invalid dates', async () => {
+  const { response, body } = await request(
+    '/api/reports/summary?from=invalid&to=2026-09-30'
+  );
+
+  assert.equal(response.status, 400);
+  assert.match(body.error, /valid dates in YYYY-MM-DD format/);
+});
+
+test('GET /api/reports/summary rejects a reversed date range', async () => {
+  const { response, body } = await request(
+    '/api/reports/summary?from=2026-09-30&to=2026-09-01'
+  );
+
+  assert.equal(response.status, 400);
+  assert.match(body.error, /on or before/);
+});
