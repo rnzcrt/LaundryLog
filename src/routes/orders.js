@@ -19,7 +19,7 @@ const router = express.Router();
 const ORDER_SELECT = `
   SELECT o.id,
          o.customer_id,
-         c.name  AS customer_name,
+         c.name AS customer_name,
          c.phone AS customer_phone,
          o.load_type,
          o.weight_kg,
@@ -29,17 +29,23 @@ const ORDER_SELECT = `
          o.note,
          o.created_at,
          o.updated_at,
-         COALESCE(p.amount, 0) AS paid_amount,
-         p.method AS paid_method,
-         p.paid_at,
+         COALESCE(pay.paid_amount, 0) AS paid_amount,
+         pay.paid_method,
+         pay.latest_paid_at AS paid_at,
          CASE
-           WHEN COALESCE(p.amount, 0) >= o.price THEN 'FULLY PAID'
+           WHEN COALESCE(pay.paid_amount, 0) >= o.price THEN 'FULLY PAID'
            ELSE 'UNPAID'
          END AS payment_status,
-         GREATEST(o.price - COALESCE(p.amount, 0), 0) AS outstanding_amount
+         GREATEST(o.price - COALESCE(pay.paid_amount, 0), 0) AS outstanding_amount
   FROM orders o
   JOIN customers c ON c.id = o.customer_id
-  LEFT JOIN payments p ON p.order_id = o.id
+  LEFT JOIN LATERAL (
+    SELECT SUM(amount) AS paid_amount,
+           CASE WHEN COUNT(*) = 1 THEN MIN(method) ELSE NULL END AS paid_method,
+           MAX(paid_at) AS latest_paid_at
+    FROM payments
+    WHERE order_id = o.id
+  ) pay ON true
 `;
 
 /**
@@ -103,7 +109,19 @@ router.get(
       [id],
     );
 
-    res.json({ order: rows[0], history: history.rows });
+    const payments = await db.query(
+      `SELECT id, order_id, amount, method, paid_at
+       FROM payments
+       WHERE order_id = $1
+       ORDER BY paid_at DESC, id DESC`,
+      [id],
+    );
+
+    res.json({
+      order: rows[0],
+      history: history.rows,
+      payments: payments.rows,
+    });
   }),
 );
 
@@ -222,7 +240,7 @@ router.patch(
 
 /**
  * POST /api/orders/:id/payment
- * Records payment for an order. One payment per order for now.
+ * Records a partial or final payment without allowing overpayment.
  */
 router.post(
   "/:id/payment",
@@ -230,19 +248,49 @@ router.post(
     const id = parseId(req.params.id, "order id");
     const { amount, method } = validatePayment(req.body);
 
-    const order = await db.query("SELECT id FROM orders WHERE id = $1", [id]);
-    if (order.rows.length === 0) {
-      throw new HttpError(404, `No order with id ${id}`);
+    if (amount <= 0) {
+      throw new HttpError(400, "Payment amount must be greater than zero");
     }
 
-    const { rows } = await db.query(
-      `INSERT INTO payments (order_id, amount, method)
-       VALUES ($1, $2, $3)
-       RETURNING id, order_id, amount, method, paid_at`,
-      [id, amount, method],
-    );
+    const payment = await db.withTransaction(async (client) => {
+      const orderResult = await client.query(
+        "SELECT id, price FROM orders WHERE id = $1 FOR UPDATE",
+        [id],
+      );
 
-    res.status(201).json({ payment: rows[0] });
+      if (orderResult.rows.length === 0) {
+        throw new HttpError(404, `No order with id ${id}`);
+      }
+
+      const order = orderResult.rows[0];
+      const paidResult = await client.query(
+        "SELECT COALESCE(SUM(amount), 0) AS paid_amount FROM payments WHERE order_id = $1",
+        [id],
+      );
+
+      const priceCents = Math.round(Number(order.price) * 100);
+      const paidCents = Math.round(Number(paidResult.rows[0].paid_amount) * 100);
+      const amountCents = Math.round(amount * 100);
+      const balanceCents = priceCents - paidCents;
+
+      if (amountCents > balanceCents) {
+        throw new HttpError(
+          400,
+          `Payment exceeds the remaining balance of ${(Math.max(balanceCents, 0) / 100).toFixed(2)}`,
+        );
+      }
+
+      const result = await client.query(
+        `INSERT INTO payments (order_id, amount, method)
+         VALUES ($1, $2, $3)
+         RETURNING id, order_id, amount, method, paid_at`,
+        [id, amountCents / 100, method],
+      );
+
+      return result.rows[0];
+    });
+
+    res.status(201).json({ payment });
   }),
 );
 

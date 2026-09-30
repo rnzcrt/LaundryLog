@@ -294,7 +294,7 @@ function renderOrders(orders) {
 
 async function openDetail(id) {
   try {
-    const { order, history } = await api(`/api/orders/${id}`);
+    const { order, history, payments = [] } = await api(`/api/orders/${id}`);
     detailBody.innerHTML = "";
 
     const title = document.createElement("h2");
@@ -337,7 +337,107 @@ async function openDetail(id) {
       timeline.append(item);
     }
 
-    detailBody.append(title, tag, rowsEl, timeline);
+    detailBody.append(title, tag, rowsEl);
+
+    const paymentTitle = document.createElement("h3");
+    paymentTitle.textContent = "Payment history";
+    detailBody.append(paymentTitle);
+
+    const paymentList = document.createElement("ul");
+    paymentList.className = "timeline";
+
+    if (payments.length === 0) {
+      const emptyPayment = document.createElement("li");
+      emptyPayment.textContent = "No payments recorded yet.";
+      paymentList.append(emptyPayment);
+    } else {
+      for (const payment of payments) {
+        const item = document.createElement("li");
+        const method = String(payment.method || "").toUpperCase();
+        item.textContent =
+          `${peso(payment.amount)} — ${method} — ${formatDate(payment.paid_at)}`;
+        paymentList.append(item);
+      }
+    }
+
+    detailBody.append(paymentList);
+
+    const balance = Number(order.outstanding_amount || 0);
+    if (balance > 0) {
+      const paymentForm = document.createElement("form");
+      paymentForm.className = "payment-form";
+      paymentForm.style.marginTop = "16px";
+
+      const amountLabel = document.createElement("label");
+      amountLabel.className = "field";
+      const amountText = document.createElement("span");
+      amountText.textContent = `Payment amount (balance: ${peso(balance)})`;
+
+      const amountInput = document.createElement("input");
+      amountInput.type = "number";
+      amountInput.name = "amount";
+      amountInput.min = "0.01";
+      amountInput.max = balance.toFixed(2);
+      amountInput.step = "0.01";
+      amountInput.required = true;
+      amountInput.placeholder = "Enter amount";
+
+      amountLabel.append(amountText, amountInput);
+
+      const methodLabel = document.createElement("label");
+      methodLabel.className = "field";
+      const methodText = document.createElement("span");
+      methodText.textContent = "Payment method";
+
+      const methodSelect = document.createElement("select");
+      methodSelect.name = "method";
+      methodSelect.required = true;
+
+      for (const [value, label] of [
+        ["cash", "Cash"],
+        ["gcash", "GCash"],
+        ["card", "Card"],
+      ]) {
+        const option = document.createElement("option");
+        option.value = value;
+        option.textContent = label;
+        methodSelect.append(option);
+      }
+
+      methodLabel.append(methodText, methodSelect);
+
+      const submit = document.createElement("button");
+      submit.type = "submit";
+      submit.className = "button button--primary";
+      submit.textContent = "Record payment";
+
+      paymentForm.append(amountLabel, methodLabel, submit);
+      paymentForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        submit.disabled = true;
+
+        try {
+          await api(`/api/orders/${id}/payment`, {
+            method: "POST",
+            body: JSON.stringify({
+              amount: Number(amountInput.value),
+              method: methodSelect.value,
+            }),
+          });
+
+          await loadOrders();
+          await openDetail(id);
+          setFeedback(`Payment recorded for order #${id}.`);
+        } catch (err) {
+          setFeedback(err.message, true);
+          submit.disabled = false;
+        }
+      });
+
+      detailBody.append(paymentForm);
+    }
+
+    detailBody.append(timeline);
 
     const next = NEXT_STATUS[order.status];
     if (next) {
