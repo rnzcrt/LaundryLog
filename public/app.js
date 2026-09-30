@@ -109,7 +109,6 @@ async function loadOrders() {
   }
 }
 
-
 const KANBAN_STATUSES = [
   "new",
   "waiting",
@@ -137,7 +136,9 @@ function renderKanban(orders) {
 
     const count = document.createElement("span");
     count.className = "kanban__count";
-    count.textContent = orders.filter((order) => order.status === status).length;
+    count.textContent = orders.filter(
+      (order) => order.status === status,
+    ).length;
 
     heading.append(title, count);
 
@@ -187,7 +188,6 @@ function renderKanban(orders) {
   }
 }
 
-
 kanbanEl.addEventListener("dragstart", (event) => {
   const card = event.target.closest(".kanban__card");
   if (!card || !card.draggable) return;
@@ -211,9 +211,7 @@ kanbanEl.addEventListener("drop", async (event) => {
   event.preventDefault();
 
   const orderId = event.dataTransfer.getData("text/plain");
-  const order = currentKanbanOrders.find(
-    (item) => String(item.id) === orderId,
-  );
+  const order = currentKanbanOrders.find((item) => String(item.id) === orderId);
 
   if (!order) return;
 
@@ -598,8 +596,7 @@ function renderProducts(products) {
   productsEl.innerHTML = products
     .map((product) => {
       const lowStock =
-        Number(product.stock_quantity) <=
-        Number(product.low_stock_threshold);
+        Number(product.stock_quantity) <= Number(product.low_stock_threshold);
 
       return `
         <article class="customer-card product-card">
@@ -612,7 +609,7 @@ function renderProducts(products) {
 
           <form class="product-stock-form" data-product-id="${product.id}">
             <label class="field">
-              <span>Update stock</span>
+              <span>Adjust stock manually</span>
               <input
                 type="number"
                 name="stock_quantity"
@@ -622,21 +619,80 @@ function renderProducts(products) {
                 required
               />
             </label>
-            <button type="submit">Save stock</button>
+            <button type="submit">Save adjustment</button>
           </form>
+
+          <form class="product-movement-form" data-product-id="${product.id}" data-movement-type="stock_in">
+            <h4>Stock in</h4>
+            <label class="field">
+              <span>Quantity to add (${escapeHtml(product.unit)})</span>
+              <input type="number" name="quantity" min="0.01" step="0.01" required />
+            </label>
+            <label class="field">
+              <span>Notes (optional)</span>
+              <input type="text" name="notes" maxlength="500" />
+            </label>
+            <button type="submit">Record stock-in</button>
+          </form>
+
+          <form class="product-movement-form" data-product-id="${product.id}" data-movement-type="usage">
+            <h4>Record usage</h4>
+            <label class="field">
+              <span>Quantity used (${escapeHtml(product.unit)})</span>
+              <input type="number" name="quantity" min="0.01" step="0.01" required />
+            </label>
+            <label class="field">
+              <span>Notes (optional)</span>
+              <input type="text" name="notes" maxlength="500" />
+            </label>
+            <button type="submit">Record usage</button>
+          </form>
+
+          <button type="button" class="product-history-button" data-product-id="${product.id}">
+            Show movement history
+          </button>
+          <div class="product-history" id="product-history-${product.id}" aria-live="polite"></div>
         </article>
       `;
     })
     .join("");
 }
+
 productsEl.addEventListener("submit", async (event) => {
-  const form = event.target.closest(".product-stock-form");
-  if (!form) return;
+  const movementForm = event.target.closest(".product-movement-form");
+  const stockForm = event.target.closest(".product-stock-form");
+
+  if (!movementForm && !stockForm) return;
 
   event.preventDefault();
 
-  const id = form.dataset.productId;
-  const stock = Number(form.elements.stock_quantity.value);
+  if (movementForm) {
+    const id = movementForm.dataset.productId;
+    const movement_type = movementForm.dataset.movementType;
+    const quantity = Number(movementForm.elements.quantity.value);
+    const notes = movementForm.elements.notes.value.trim();
+
+    try {
+      await api(`/api/products/${id}/movements`, {
+        method: "POST",
+        body: JSON.stringify({ movement_type, quantity, notes }),
+      });
+
+      setFeedback(
+        movement_type === "stock_in"
+          ? "Stock-in recorded successfully."
+          : "Usage recorded successfully.",
+      );
+      await refreshProducts();
+    } catch (err) {
+      setFeedback(err.message, true);
+    }
+
+    return;
+  }
+
+  const id = stockForm.dataset.productId;
+  const stock = Number(stockForm.elements.stock_quantity.value);
 
   try {
     await api(`/api/products/${id}`, {
@@ -644,10 +700,70 @@ productsEl.addEventListener("submit", async (event) => {
       body: JSON.stringify({ stock_quantity: stock }),
     });
 
-    setFeedback("Stock updated successfully.");
+    setFeedback("Stock adjusted successfully.");
     await refreshProducts();
   } catch (err) {
     setFeedback(err.message, true);
+  }
+});
+
+productsEl.addEventListener("click", async (event) => {
+  const button = event.target.closest(".product-history-button");
+  if (!button) return;
+
+  const id = button.dataset.productId;
+  const historyEl = document.getElementById(`product-history-${id}`);
+
+  if (historyEl.dataset.loaded === "true") {
+    historyEl.innerHTML = "";
+    historyEl.dataset.loaded = "false";
+    button.textContent = "Show movement history";
+    return;
+  }
+
+  button.disabled = true;
+  historyEl.textContent = "Loading history...";
+
+  try {
+    const data = await api(`/api/products/${id}/movements`);
+
+    if (!data.movements.length) {
+      historyEl.innerHTML = "<p>No movement history yet.</p>";
+    } else {
+      historyEl.innerHTML = `
+        <h4>Movement history</h4>
+        <ul>
+          ${data.movements
+            .map((movement) => {
+              const date = new Date(movement.created_at).toLocaleString();
+              const type =
+                movement.movement_type === "stock_in"
+                  ? "Stock in"
+                  : movement.movement_type === "usage"
+                    ? "Usage"
+                    : "Adjustment";
+
+              return `
+              <li>
+                <strong>${escapeHtml(type)}</strong>:
+                ${Number(movement.quantity)}
+                <br />
+                <small>${escapeHtml(date)}</small>
+                ${movement.notes ? `<p>${escapeHtml(movement.notes)}</p>` : ""}
+              </li>
+            `;
+            })
+            .join("")}
+        </ul>
+      `;
+    }
+
+    historyEl.dataset.loaded = "true";
+    button.textContent = "Hide movement history";
+  } catch (err) {
+    historyEl.textContent = err.message || "Unable to load history.";
+  } finally {
+    button.disabled = false;
   }
 });
 
