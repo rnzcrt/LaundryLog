@@ -21,6 +21,7 @@ const { assertCurrentSchema } = require('../db/migrate');
 let weightedOrderId;
 let machineOrderId;
 let machineLoadId;
+let workflowOrderId;
 let fixturePhone;
 let fixturePrice;
 
@@ -186,26 +187,131 @@ test('machine management validates edits and protects machines with active loads
   assert.equal(invalid.response.status, 400);
 });
 
-test('order status moves through the seven stages and machine assignments appear in detail', { skip: !hasTestDatabase }, async () => {
-  for (const status of ['waiting', 'washing', 'drying', 'folding', 'ready', 'completed']) {
-    const result = await request(`/api/orders/${weightedOrderId}/status`, {
-      method: 'PATCH', body: JSON.stringify({ status }),
-    });
-    assert.equal(result.response.status, 200);
-    assert.equal(result.body.order.status, status);
+test('guided status workflow assigns split machine loads and charges optional add-ons once', { skip: !hasTestDatabase }, async () => {
+  const created = await request('/api/orders', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: 'Guided workflow customer',
+      phone: `086${String(Date.now()).slice(-9)}`,
+      load_type: 'wash_fold',
+      weight_kg: 18,
+      wash_machine_type: 'regular',
+      dry_machine_type: 'regular',
+      due_date: '2099-01-21',
+    }),
+  });
+  assert.equal(created.response.status, 201);
+  workflowOrderId = created.body.order.id;
+  const originalPrice = Math.round(Number(created.body.order.price) * 100);
+
+  async function assignmentsFor(kind, totalKg) {
+    const { rows } = await db.query(
+      `SELECT m.id, m.capacity_kg FROM machines m
+       WHERE m.machine_kind = $1 AND m.status = 'available'
+         AND NOT EXISTS (SELECT 1 FROM machine_loads ml
+                         WHERE ml.machine_id = m.id AND ml.status IN ('queued', 'running'))
+       ORDER BY m.capacity_kg DESC, m.id`,
+      [kind],
+    );
+    let remaining = Math.round(totalKg * 100);
+    const assignments = [];
+    for (const machine of rows) {
+      if (remaining <= 0) break;
+      const load = Math.min(remaining, Math.round(Number(machine.capacity_kg) * 100));
+      assignments.push({ machine_id: Number(machine.id), weight_kg: load / 100 });
+      remaining -= load;
+    }
+    assert.equal(remaining, 0, `test database needs sufficient available ${kind} capacity`);
+    return assignments;
   }
 
-  const duplicate = await request(`/api/orders/${weightedOrderId}/status`, {
+  const rejected = await request(`/api/orders/${workflowOrderId}/status`, {
+    method: 'PATCH', body: JSON.stringify({ status: 'waiting' }),
+  });
+  assert.equal(rejected.response.status, 400);
+  assert.equal((await request(`/api/orders/${workflowOrderId}`)).body.order.status, 'new');
+
+  const washerAssignments = await assignmentsFor('washer', 18);
+  const duplicateMachine = await request(`/api/orders/${workflowOrderId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'waiting', machine_assignments: [
+      { machine_id: washerAssignments[0].machine_id, weight_kg: 9 },
+      { machine_id: washerAssignments[0].machine_id, weight_kg: 9 },
+    ] }),
+  });
+  assert.equal(duplicateMachine.response.status, 400);
+  const tooSmall = await request(`/api/orders/${workflowOrderId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'waiting', machine_assignments: [
+      { machine_id: washerAssignments[0].machine_id, weight_kg: 18 },
+    ] }),
+  });
+  assert.equal(tooSmall.response.status, 409);
+  assert.equal((await request(`/api/orders/${workflowOrderId}`)).body.order.status, 'new');
+  const waiting = await request(`/api/orders/${workflowOrderId}/status`, {
+    method: 'PATCH', body: JSON.stringify({ status: 'waiting', machine_assignments: washerAssignments }),
+  });
+  assert.equal(waiting.response.status, 200);
+  const reused = await request(`/api/orders/${workflowOrderId}/status`, {
+    method: 'PATCH', body: JSON.stringify({ status: 'waiting', machine_assignments: washerAssignments }),
+  });
+  assert.equal(reused.response.status, 409);
+
+  assert.equal((await request(`/api/orders/${workflowOrderId}/status`, {
+    method: 'PATCH', body: JSON.stringify({ status: 'washing' }),
+  })).response.status, 200);
+  let detail = await request(`/api/orders/${workflowOrderId}`);
+  assert.equal(detail.body.loads.filter((load) => load.status === 'running').length, washerAssignments.length);
+
+  const missingDryers = await request(`/api/orders/${workflowOrderId}/status`, {
+    method: 'PATCH', body: JSON.stringify({ status: 'drying' }),
+  });
+  assert.equal(missingDryers.response.status, 400);
+  const dryerAssignments = await assignmentsFor('dryer', 18);
+  const drying = await request(`/api/orders/${workflowOrderId}/status`, {
+    method: 'PATCH', body: JSON.stringify({ status: 'drying', machine_assignments: dryerAssignments }),
+  });
+  assert.equal(drying.response.status, 200);
+  detail = await request(`/api/orders/${workflowOrderId}`);
+  assert.equal(detail.body.loads.filter((load) => load.machine_kind === 'washer' && load.status === 'completed').length, washerAssignments.length);
+  assert.equal(detail.body.loads.filter((load) => load.machine_kind === 'dryer' && load.status === 'running').length, dryerAssignments.length);
+  assert.equal((await request(`/api/orders/${workflowOrderId}/status`, {
+    method: 'PATCH', body: JSON.stringify({ status: 'folding' }),
+  })).response.status, 200);
+  assert.equal((await request(`/api/orders/${workflowOrderId}/status`, {
+    method: 'PATCH', body: JSON.stringify({ status: 'ready' }),
+  })).response.status, 200);
+
+  const addon = await request('/api/addons', {
+    method: 'POST', body: JSON.stringify({ name: `Completion add-on ${Date.now()}`, price: 12.34 }),
+  });
+  assert.equal(addon.response.status, 201);
+  const payment = await request(`/api/orders/${workflowOrderId}/payment`, {
+    method: 'POST', body: JSON.stringify({ amount: 25, method: 'cash' }),
+  });
+  assert.equal(payment.response.status, 201);
+  const paymentsBefore = (await request(`/api/orders/${workflowOrderId}`)).body.payments.length;
+
+  const undecided = await request(`/api/orders/${workflowOrderId}/status`, {
     method: 'PATCH', body: JSON.stringify({ status: 'completed' }),
   });
-  assert.equal(duplicate.response.status, 409);
-
-  const details = await request(`/api/orders/${weightedOrderId}`);
-  assert.equal(details.response.status, 200);
-  assert.equal(details.body.history.length, 7);
-  assert.equal(details.body.loads[0].id, machineLoadId);
-  assert.equal(details.body.order.due_date, '2099-01-20');
-  assert.ok(details.body.order.completed_at);
+  assert.equal(undecided.response.status, 400);
+  assert.equal((await request(`/api/orders/${workflowOrderId}`)).body.order.status, 'ready');
+  const completed = await request(`/api/orders/${workflowOrderId}/status`, {
+    method: 'PATCH',
+    body: JSON.stringify({ status: 'completed', addon_decision: 'add', addons: [{ id: addon.body.addon.id, quantity: 2 }] }),
+  });
+  assert.equal(completed.response.status, 200);
+  detail = await request(`/api/orders/${workflowOrderId}`);
+  assert.equal(Number(detail.body.order.price), (originalPrice + 2468) / 100);
+  assert.equal(Number(detail.body.order.paid_amount), 25);
+  assert.equal(Number(detail.body.order.outstanding_amount), (originalPrice + 2468) / 100 - 25);
+  assert.equal(detail.body.payments.length, paymentsBefore);
+  assert.equal(detail.body.addons.length, 1);
+  assert.equal(Number(detail.body.addons[0].line_total), 24.68);
+  assert.equal(detail.body.history.length, 7);
+  assert.equal(detail.body.order.due_date, '2099-01-21');
+  assert.ok(detail.body.order.completed_at);
 });
 
 test('split payments update the balance and reject overpayment', { skip: !hasTestDatabase }, async () => {

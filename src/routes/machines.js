@@ -66,13 +66,18 @@ router.get(
   '/',
   asyncHandler(async (req, res) => {
     const { rows } = await db.query(
-      `SELECT id,
-              name,
-              machine_type,
-              machine_kind,
-              capacity_kg,
-              status,
-              created_at
+      `SELECT machines.id,
+              machines.name,
+              machines.machine_type,
+              machines.machine_kind,
+              machines.capacity_kg,
+              machines.status,
+              machines.created_at,
+              (machines.status = 'available' AND NOT EXISTS (
+                SELECT 1 FROM machine_loads ml
+                WHERE ml.machine_id = machines.id
+                  AND ml.status IN ('queued', 'running')
+              )) AS available_for_assignment
        FROM machines
        ORDER BY machine_kind, machine_type, id`,
     );

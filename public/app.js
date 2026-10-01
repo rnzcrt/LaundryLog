@@ -39,6 +39,20 @@ const formErrors = document.getElementById("formErrors");
 const detailDialog = document.getElementById("detailDialog");
 const detailBody = document.getElementById("detailBody");
 const orderAddonsEl = document.getElementById("orderAddons");
+const workflowDialog = document.getElementById("workflowDialog");
+const workflowForm = document.getElementById("workflowForm");
+const workflowBody = document.getElementById("workflowBody");
+const workflowActions = document.getElementById("workflowActions");
+const workflowFeedback = document.getElementById("workflowFeedback");
+
+function detailSection(titleText) {
+  const section = document.createElement("section");
+  section.className = "detail__section";
+  const heading = document.createElement("h3");
+  heading.textContent = titleText;
+  section.append(heading);
+  return section;
+}
 
 let activeStatus = "all";
 let activeOrderQuery = "";
@@ -319,11 +333,18 @@ function renderOrders(orders) {
 
 async function openDetail(id) {
   try {
-    const { order, history, payments = [], loads = [], addons = [] } = await api(`/api/orders/${id}`);
+    const {
+      order,
+      history,
+      payments = [],
+      loads = [],
+      addons = [],
+    } = await api(`/api/orders/${id}`);
     detailBody.innerHTML = "";
 
     const title = document.createElement("h2");
     title.className = "panel__title";
+    title.id = "detailDialogTitle";
     title.textContent = `Order #${order.id} — ${order.customer_name}`;
 
     const tag = document.createElement("span");
@@ -347,6 +368,7 @@ async function openDetail(id) {
     }
 
     const rowsEl = document.createElement("div");
+    rowsEl.className = "detail__summary";
     for (const [label, value] of rows) {
       const row = document.createElement("div");
       row.className = "detail__row";
@@ -366,11 +388,14 @@ async function openDetail(id) {
       timeline.append(item);
     }
 
-    detailBody.append(title, tag, rowsEl);
+    const header = document.createElement("div");
+    header.className = "detail__header";
+    header.append(title, tag);
+    const summarySection = detailSection("Order summary");
+    summarySection.append(rowsEl);
+    detailBody.append(header, summarySection);
 
-    const paymentTitle = document.createElement("h3");
-    paymentTitle.textContent = "Payment history";
-    detailBody.append(paymentTitle);
+    const paymentSection = detailSection("Payment history");
 
     const paymentList = document.createElement("ul");
     paymentList.className = "timeline";
@@ -383,17 +408,15 @@ async function openDetail(id) {
       for (const payment of payments) {
         const item = document.createElement("li");
         const method = String(payment.method || "").toUpperCase();
-        item.textContent =
-          `${peso(payment.amount)} — ${method} — ${formatDate(payment.paid_at)}`;
+        item.textContent = `${peso(payment.amount)} — ${method} — ${formatDate(payment.paid_at)}`;
         paymentList.append(item);
       }
     }
 
-    detailBody.append(paymentList);
+    paymentSection.append(paymentList);
+    detailBody.append(paymentSection);
 
-    const addonsTitle = document.createElement("h3");
-    addonsTitle.textContent = "Service add-ons";
-    detailBody.append(addonsTitle);
+    const addonsSection = detailSection("Service add-ons");
     const addonList = document.createElement("ul");
     addonList.className = "timeline";
     if (addons.length === 0) {
@@ -407,11 +430,10 @@ async function openDetail(id) {
         addonList.append(item);
       }
     }
-    detailBody.append(addonList);
+    addonsSection.append(addonList);
+    detailBody.append(addonsSection);
 
-    const loadsTitle = document.createElement("h3");
-    loadsTitle.textContent = "Machine loads";
-    detailBody.append(loadsTitle);
+    const loadsSection = detailSection("Machine loads");
     const loadsList = document.createElement("ul");
     loadsList.className = "timeline";
     if (loads.length === 0) {
@@ -425,7 +447,8 @@ async function openDetail(id) {
         loadsList.append(item);
       }
     }
-    detailBody.append(loadsList);
+    loadsSection.append(loadsList);
+    detailBody.append(loadsSection);
 
     const balance = Number(order.outstanding_amount || 0);
     if (balance > 0) {
@@ -498,10 +521,12 @@ async function openDetail(id) {
         }
       });
 
-      detailBody.append(paymentForm);
+      paymentSection.append(paymentForm);
     }
 
-    detailBody.append(timeline);
+    const historySection = detailSection("Status history");
+    historySection.append(timeline);
+    detailBody.append(historySection);
 
     const next = NEXT_STATUS[order.status];
     if (next) {
@@ -525,6 +550,7 @@ async function openCustomerHistory(id) {
 
     const title = document.createElement("h2");
     title.className = "panel__title";
+    title.id = "detailDialogTitle";
     title.textContent = `Customer — ${customer.name}`;
 
     const phone = document.createElement("p");
@@ -607,14 +633,290 @@ async function openCustomerHistory(id) {
   }
 }
 
+function showWorkflowPrompt({
+  titleText,
+  description,
+  content,
+  actions,
+  canSubmit,
+  onSubmit,
+}) {
+  workflowBody.innerHTML = "";
+  workflowActions.innerHTML = "";
+  workflowFeedback.textContent = "";
+  workflowFeedback.classList.remove("is-error");
+
+  const title = document.createElement("h2");
+  title.id = "workflowTitle";
+  title.className = "panel__title";
+  title.textContent = titleText;
+  const intro = document.createElement("p");
+  intro.className = "workflow-hint";
+  intro.textContent = description;
+  workflowBody.append(title, intro, content);
+
+  const cancel = document.createElement("button");
+  cancel.type = "button";
+  cancel.className = "button button--secondary";
+  cancel.textContent = "Cancel";
+  workflowActions.append(cancel);
+
+  for (const action of actions) {
+    const button = document.createElement("button");
+    button.type = "submit";
+    button.className = `button ${action.primary ? "button--primary" : "button--secondary"}`;
+    button.textContent = action.label;
+    button.dataset.decision = action.decision;
+    workflowActions.append(button);
+  }
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const settle = (value) => {
+      if (settled) return;
+      settled = true;
+      workflowDialog.close();
+      resolve(value);
+    };
+
+    workflowForm.onsubmit = (event) => {
+      event.preventDefault();
+      const submitter = event.submitter;
+      if (!submitter || !canSubmit(submitter.dataset.decision)) {
+        workflowFeedback.textContent =
+          "Complete the required selections to continue.";
+        workflowFeedback.classList.add("is-error");
+        return;
+      }
+      submitter.disabled = true;
+      const value = onSubmit(submitter.dataset.decision);
+      settle(value);
+    };
+    workflowForm.onkeydown = (event) => {
+      if (event.key === "Enter" && event.target.tagName !== "BUTTON")
+        event.preventDefault();
+    };
+    cancel.onclick = () => settle(null);
+    workflowDialog.oncancel = (event) => {
+      event.preventDefault();
+      settle(null);
+    };
+    workflowDialog.showModal();
+  });
+}
+
+function planMachineLoads(totalWeightKg, machines) {
+  return window.LaundryLogWorkflow.planMachineLoads(
+    totalWeightKg,
+    machines
+      .filter((item) => item.checkbox.checked)
+      .map((item) => item.machine),
+  );
+}
+
+async function collectWorkflowChoices(order, destination, details) {
+  let payload = { machine_assignments: [] };
+  const machineKind = window.LaundryLogWorkflow.requiredMachineKind(
+    order.load_type,
+    destination,
+  );
+
+  if (machineKind) {
+    const { machines } = await api("/api/machines");
+    const available = machines
+      .filter(
+        (machine) =>
+          machine.machine_kind === machineKind &&
+          machine.available_for_assignment,
+      )
+      .sort(
+        (a, b) =>
+          Number(a.capacity_kg) - Number(b.capacity_kg) ||
+          Number(a.id) - Number(b.id),
+      );
+    const content = document.createElement("div");
+    const list = document.createElement("div");
+    list.className = "workflow-machine-list";
+    const options = [];
+    if (!available.length) {
+      const empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = `No available ${machineKind}s. The order will stay ${STATUS_LABELS[order.status].toLowerCase()}.`;
+      list.append(empty);
+    }
+    for (const machine of available) {
+      const label = document.createElement("label");
+      label.className = "workflow-choice";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = machine.id;
+      checkbox.setAttribute("aria-label", `Assign ${machine.name}`);
+      const name = document.createElement("span");
+      name.textContent = machine.name;
+      const capacity = document.createElement("small");
+      capacity.textContent = `${Number(machine.capacity_kg)} kg · ${machine.machine_type}`;
+      name.append(capacity);
+      label.append(checkbox, name);
+      list.append(label);
+      options.push({ machine, checkbox });
+    }
+    const summary = document.createElement("p");
+    summary.className = "workflow-summary";
+    const weight = Number(order.weight_kg);
+    const updatePlan = () => {
+      const selectedCapacity = options
+        .filter((item) => item.checkbox.checked)
+        .reduce((sum, item) => sum + Number(item.machine.capacity_kg), 0);
+      const plan = planMachineLoads(weight, options);
+      summary.textContent = plan
+        ? `Load plan for ${weight} kg: ${plan.map((item) => `${options.find((option) => Number(option.machine.id) === item.machine_id).machine.name} ${item.weight_kg} kg`).join(" · ")}`
+        : `Selected capacity: ${selectedCapacity.toFixed(2)} kg of ${weight} kg required.`;
+      return plan;
+    };
+    options.forEach(({ checkbox }) =>
+      checkbox.addEventListener("change", updatePlan),
+    );
+    content.append(list, summary);
+    const chosen = await showWorkflowPrompt({
+      titleText: `Choose ${machineKind}s`,
+      description: `Select available ${machineKind}s for order #${order.id}. The full order weight must fit; it will be split across the selected machines.`,
+      content,
+      actions: [
+        { decision: "assign", label: "Assign and continue", primary: true },
+      ],
+      canSubmit: () => Boolean(updatePlan()),
+      onSubmit: () => ({ machine_assignments: updatePlan() }),
+    });
+    if (!chosen) return null;
+    payload = { ...payload, ...chosen };
+  }
+
+  if (destination === "completed") {
+    const { addons } = await api("/api/addons");
+    const alreadyAdded = new Set(
+      (details.addons || [])
+        .map((addon) => Number(addon.addon_id))
+        .filter(Number.isInteger),
+    );
+    const choices = addons.filter(
+      (addon) => !alreadyAdded.has(Number(addon.id)),
+    );
+    const content = document.createElement("div");
+    const list = document.createElement("div");
+    list.className = "workflow-addon-list";
+    const inputs = [];
+    if (!choices.length) {
+      const empty = document.createElement("p");
+      empty.className = "empty";
+      empty.textContent = addons.length
+        ? "All available add-ons are already included on this order."
+        : "There are no active add-ons. Confirm to complete the order without them.";
+      list.append(empty);
+    }
+    for (const addon of choices) {
+      const label = document.createElement("label");
+      label.className = "workflow-choice";
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = addon.id;
+      checkbox.setAttribute("aria-label", `Add ${addon.name}`);
+      const text = document.createElement("span");
+      text.textContent = addon.name;
+      const price = document.createElement("small");
+      price.textContent = `${peso(addon.price)} each`;
+      text.append(price);
+      const quantity = document.createElement("input");
+      quantity.type = "number";
+      quantity.min = "1";
+      quantity.max = "100";
+      quantity.step = "1";
+      quantity.value = "1";
+      quantity.disabled = true;
+      quantity.setAttribute("aria-label", `Quantity for ${addon.name}`);
+      checkbox.addEventListener("change", () => {
+        quantity.disabled = !checkbox.checked;
+      });
+      quantity.addEventListener("input", () => updateSubtotal());
+      const input = { addon, checkbox, quantity };
+      checkbox.addEventListener("change", () => updateSubtotal());
+      inputs.push(input);
+      label.append(checkbox, text, quantity);
+      list.append(label);
+    }
+    const subtotal = document.createElement("p");
+    subtotal.className = "workflow-summary";
+    function updateSubtotal() {
+      const totalCents = window.LaundryLogWorkflow.addonSubtotalCents(
+        inputs
+          .filter((item) => item.checkbox.checked)
+          .map((item) => ({
+            price: item.addon.price,
+            quantity: item.quantity.value,
+          })),
+      );
+      if (totalCents === null) {
+        subtotal.textContent =
+          "Enter a whole-number quantity from 1 to 100 for each selected add-on.";
+        return;
+      }
+      subtotal.textContent = `Add-on subtotal: ${peso(totalCents / 100)} · Current order total: ${peso(order.price)}${totalCents ? ` · New total: ${peso(Number(order.price) + totalCents / 100)}` : ""}`;
+    }
+    updateSubtotal();
+    content.append(list, subtotal);
+    const chosen = await showWorkflowPrompt({
+      titleText: "Optional services before completion",
+      description: `Choose add-ons for order #${order.id}, or explicitly skip. Added charges update the balance; existing payments remain unchanged.`,
+      content,
+      actions: [
+        { decision: "skip", label: "Skip add-ons and complete" },
+        { decision: "add", label: "Confirm and complete", primary: true },
+      ],
+      canSubmit: (decision) => {
+        if (decision === "skip" || choices.length === 0) return true;
+        return inputs.every(
+          (item) =>
+            !item.checkbox.checked ||
+            (Number.isInteger(Number(item.quantity.value)) &&
+              Number(item.quantity.value) >= 1 &&
+              Number(item.quantity.value) <= 100),
+        );
+      },
+      onSubmit: (decision) => ({
+        addon_decision: decision,
+        addons:
+          decision === "skip"
+            ? []
+            : inputs
+                .filter((item) => item.checkbox.checked)
+                .map((item) => ({
+                  id: Number(item.addon.id),
+                  quantity: Number(item.quantity.value),
+                })),
+      }),
+    });
+    if (!chosen) return null;
+    payload = { ...payload, ...chosen };
+  }
+
+  return payload;
+}
+
 async function changeStatus(id, status) {
+  const detailWasOpen = detailDialog.open;
   try {
+    const details = await api(`/api/orders/${id}`);
+    const order = details.order;
+    const workflow = await collectWorkflowChoices(order, status, details);
+    if (!workflow) return;
+
+    setFeedback(`Updating order #${id}…`);
     await api(`/api/orders/${id}/status`, {
       method: "PATCH",
-      body: JSON.stringify({ status }),
+      body: JSON.stringify({ status, ...workflow }),
     });
-    detailDialog.close();
+    if (detailDialog.open) detailDialog.close();
     await loadOrders();
+    if (detailWasOpen) await openDetail(id);
     setFeedback(`Order #${id} is now ${STATUS_LABELS[status].toLowerCase()}`);
   } catch (err) {
     setFeedback(err.message, true);
@@ -670,38 +972,39 @@ function updateOrderFormFields() {
 
 async function loadOrderAddons() {
   try {
-    const { addons } = await api('/api/addons');
+    const { addons } = await api("/api/addons");
     orderAddonsEl.replaceChildren();
     if (addons.length === 0) {
-      const empty = document.createElement('p');
-      empty.textContent = 'No service add-ons configured.';
+      const empty = document.createElement("p");
+      empty.textContent = "No service add-ons configured.";
       orderAddonsEl.append(empty);
       return;
     }
     for (const addon of addons) {
-      const label = document.createElement('label');
-      label.className = 'addon-choice';
-      const input = document.createElement('input');
-      input.type = 'checkbox';
+      const label = document.createElement("label");
+      label.className = "addon-choice";
+      const input = document.createElement("input");
+      input.type = "checkbox";
       input.name = `addon_${addon.id}`;
       input.value = addon.id;
       input.dataset.price = Number(addon.price);
-      const text = document.createElement('span');
+      const text = document.createElement("span");
       text.textContent = `${addon.name} (+${peso(addon.price)})`;
       label.append(input, text);
       orderAddonsEl.append(label);
-      input.addEventListener('change', updateAddonPreview);
+      input.addEventListener("change", updateAddonPreview);
     }
     updateAddonPreview();
   } catch (err) {
-    orderAddonsEl.textContent = 'Unable to load add-ons.';
+    orderAddonsEl.textContent = "Unable to load add-ons.";
   }
 }
 
 function updateAddonPreview() {
-  const selectedTotal = [...orderAddonsEl.querySelectorAll('input:checked')]
-    .reduce((sum, input) => sum + Number(input.dataset.price || 0), 0);
-  document.getElementById('pricePreview').textContent =
+  const selectedTotal = [
+    ...orderAddonsEl.querySelectorAll("input:checked"),
+  ].reduce((sum, input) => sum + Number(input.dataset.price || 0), 0);
+  document.getElementById("pricePreview").textContent =
     `Base price is calculated from the service and machine type. Selected add-ons: ${peso(selectedTotal)}.`;
 }
 
@@ -724,12 +1027,13 @@ newOrderForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   formErrors.textContent = "";
 
-    const data = Object.fromEntries(new FormData(newOrderForm));
-    data.addons = [...orderAddonsEl.querySelectorAll('input:checked')]
-      .map((input) => ({ id: Number(input.value), quantity: 1 }));
-    for (const key of Object.keys(data)) {
-      if (key.startsWith('addon_')) delete data[key];
-    }
+  const data = Object.fromEntries(new FormData(newOrderForm));
+  data.addons = [...orderAddonsEl.querySelectorAll("input:checked")].map(
+    (input) => ({ id: Number(input.value), quantity: 1 }),
+  );
+  for (const key of Object.keys(data)) {
+    if (key.startsWith("addon_")) delete data[key];
+  }
 
   const byWeight = ["wash_fold", "wash_only", "dry_only", "fold_only"].includes(
     data.load_type,
@@ -985,23 +1289,29 @@ function setManagementFeedback(message, isError = false) {
 async function refreshMachines() {
   try {
     const { machines } = await api("/api/machines");
-    machinesEl.innerHTML = machines.length ? `
+    machinesEl.innerHTML = machines.length
+      ? `
       <div class="machine-manage-list">
-        ${machines.map((machine) => `
+        ${machines
+          .map(
+            (machine) => `
           <article class="machine-manage-card">
             <h3>${escapeHtml(machine.name)}</h3>
-            <p class="management-status">${escapeHtml(machine.machine_type)} ${escapeHtml(machine.machine_kind)} · ${escapeHtml(machine.capacity_kg)} kg · ${escapeHtml(machine.status)}</p>
+            <p class="management-status">${escapeHtml(machine.machine_type)} ${escapeHtml(machine.machine_kind)} · ${escapeHtml(machine.capacity_kg)} kg · ${escapeHtml(machine.status === "available" && !machine.available_for_assignment ? "Assigned" : machine.status)}</p>
             <form class="machine-edit-form" data-machine-id="${Number(machine.id)}">
               <label class="field"><span>Name</span><input name="name" type="text" maxlength="120" value="${escapeHtml(machine.name)}" required /></label>
               <label class="field"><span>Type</span><select name="machine_type"><option value="regular" ${machine.machine_type === "regular" ? "selected" : ""}>Regular</option><option value="titan" ${machine.machine_type === "titan" ? "selected" : ""}>Titan</option></select></label>
               <label class="field"><span>Kind</span><select name="machine_kind"><option value="washer" ${machine.machine_kind === "washer" ? "selected" : ""}>Washer</option><option value="dryer" ${machine.machine_kind === "dryer" ? "selected" : ""}>Dryer</option></select></label>
               <label class="field"><span>Capacity (kg)</span><input name="capacity_kg" type="number" min="0.1" max="100" step="0.01" value="${escapeHtml(machine.capacity_kg)}" required /></label>
-              <label class="field"><span>Availability</span><select name="status" ${machine.status === "running" ? "disabled" : ""}><option value="available" ${machine.status === "available" ? "selected" : ""}>Available</option><option value="maintenance" ${machine.status === "maintenance" ? "selected" : ""}>Maintenance</option></select></label>
+              <label class="field"><span>Availability</span><select name="status" ${machine.status === "running" || (machine.status === "available" && !machine.available_for_assignment) ? "disabled" : ""}><option value="available" ${machine.status === "available" ? "selected" : ""}>Available</option><option value="maintenance" ${machine.status === "maintenance" ? "selected" : ""}>Maintenance</option></select></label>
               <button class="button button--secondary" type="submit">Save machine</button>
             </form>
           </article>
-        `).join("")}
-      </div>` : '<p class="empty">No machines have been added.</p>';
+        `,
+          )
+          .join("")}
+      </div>`
+      : '<p class="empty">No machines have been added.</p>';
   } catch (err) {
     machinesEl.innerHTML = '<p class="empty">Unable to load machines.</p>';
     setManagementFeedback(err.message, true);
@@ -1015,7 +1325,10 @@ machineForm.addEventListener("submit", async (event) => {
   try {
     const fields = Object.fromEntries(new FormData(machineForm));
     fields.capacity_kg = Number(fields.capacity_kg);
-    await api("/api/machines", { method: "POST", body: JSON.stringify(fields) });
+    await api("/api/machines", {
+      method: "POST",
+      body: JSON.stringify(fields),
+    });
     machineForm.reset();
     setManagementFeedback("Machine added.");
     await refreshMachines();
@@ -1036,7 +1349,8 @@ machinesEl.addEventListener("submit", async (event) => {
     const fields = Object.fromEntries(new FormData(form));
     fields.capacity_kg = Number(fields.capacity_kg);
     await api(`/api/machines/${form.dataset.machineId}`, {
-      method: "PATCH", body: JSON.stringify(fields),
+      method: "PATCH",
+      body: JSON.stringify(fields),
     });
     setManagementFeedback("Machine updated.");
     await refreshMachines();
@@ -1050,9 +1364,12 @@ machinesEl.addEventListener("submit", async (event) => {
 async function refreshManagedAddons() {
   try {
     const { addons } = await api("/api/addons?include_inactive=true");
-    managedAddonsEl.innerHTML = addons.length ? `
+    managedAddonsEl.innerHTML = addons.length
+      ? `
       <div class="addon-manage-list">
-        ${addons.map((addon) => `
+        ${addons
+          .map(
+            (addon) => `
           <article class="addon-manage-card">
             <h3>${escapeHtml(addon.name)}</h3>
             <form class="addon-edit-form" data-addon-id="${Number(addon.id)}">
@@ -1062,8 +1379,11 @@ async function refreshManagedAddons() {
               <button class="button button--secondary" type="submit">Save add-on</button>
             </form>
           </article>
-        `).join("")}
-      </div>` : '<p class="empty">No add-ons configured.</p>';
+        `,
+          )
+          .join("")}
+      </div>`
+      : '<p class="empty">No add-ons configured.</p>';
   } catch (err) {
     managedAddonsEl.innerHTML = '<p class="empty">Unable to load add-ons.</p>';
     setManagementFeedback(err.message, true);
@@ -1099,9 +1419,12 @@ managedAddonsEl.addEventListener("submit", async (event) => {
     fields.price = Number(fields.price);
     fields.is_active = form.elements.is_active.checked;
     await api(`/api/addons/${form.dataset.addonId}`, {
-      method: "PATCH", body: JSON.stringify(fields),
+      method: "PATCH",
+      body: JSON.stringify(fields),
     });
-    setManagementFeedback("Add-on updated. Existing order prices are unchanged.");
+    setManagementFeedback(
+      "Add-on updated. Existing order prices are unchanged.",
+    );
     await refreshManagedAddons();
   } catch (err) {
     setManagementFeedback(err.message, true);

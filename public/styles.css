@@ -494,7 +494,7 @@ h1, h2, h3 { margin: 0; }
 }
 
 .management-form {
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
   align-items: end;
   margin-bottom: var(--space-2);
   padding: var(--space-2);
@@ -505,11 +505,14 @@ h1, h2, h3 { margin: 0; }
 
 .management-form .button {
   min-height: 42px;
+  justify-self: start;
+  min-width: 150px;
 }
 
 .machine-manage-list,
 .addon-manage-list {
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
   gap: var(--space-1);
 }
 
@@ -530,9 +533,22 @@ h1, h2, h3 { margin: 0; }
 .machine-edit-form,
 .addon-edit-form {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
   align-items: end;
-  gap: var(--space-1);
+  gap: 16px;
+}
+
+.machine-manage-card,
+.addon-manage-card { min-width: 0; }
+
+.machine-edit-form .field,
+.addon-edit-form .field { min-width: 0; }
+
+.machine-edit-form .button,
+.addon-edit-form .button {
+  min-height: 44px;
+  justify-self: start;
+  align-self: end;
 }
 
 .machine-edit-form input,
@@ -546,6 +562,119 @@ h1, h2, h3 { margin: 0; }
   margin: 4px 0 var(--space-1);
   color: var(--color-muted);
   font-size: 13px;
+}
+
+.panel--detail {
+  width: min(860px, calc(100vw - 32px));
+  max-height: min(90dvh, 920px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: 28px;
+}
+
+.workflow-dialog {
+  width: min(620px, calc(100vw - 28px));
+  max-height: min(88dvh, 820px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  padding: clamp(18px, 4vw, 32px);
+}
+
+.detail__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.detail__header .panel__title {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.detail__section {
+  min-width: 0;
+  margin-top: 22px;
+  padding-top: 18px;
+  border-top: 1px solid var(--color-border);
+}
+
+.detail__section h3 { margin-bottom: 8px; }
+
+.detail__summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px 24px;
+}
+
+.detail__row {
+  min-width: 0;
+  align-items: flex-start;
+  overflow-wrap: anywhere;
+}
+
+.detail__row span:last-child { text-align: right; }
+
+.workflow-hint {
+  margin: 4px 0 14px;
+  color: var(--color-muted);
+  font-size: 14px;
+}
+
+.workflow-machine-list,
+.workflow-addon-list {
+  display: grid;
+  gap: 8px;
+  max-height: 42dvh;
+  overflow: auto;
+  padding: 2px;
+}
+
+.workflow-choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid var(--color-border);
+  border-radius: 9px;
+  background: #fff;
+  color: var(--color-text);
+}
+
+.workflow-choice input { width: 18px; height: 18px; }
+.workflow-choice small { display: block; color: var(--color-muted); }
+.workflow-choice input[type="number"] { width: 78px; }
+.workflow-summary { margin: 12px 0 0; font-weight: 600; }
+.workflow-dialog .form__actions { flex-wrap: wrap; }
+.workflow-dialog .form__actions .button { min-height: 44px; }
+
+@media (max-width: 600px) {
+  .management-form,
+  .machine-edit-form,
+  .addon-edit-form { grid-template-columns: minmax(0, 1fr); }
+
+  .management-form .button,
+  .machine-edit-form .button,
+  .addon-edit-form .button { width: 100%; }
+
+  .panel--detail {
+    width: calc(100vw - 16px);
+    max-height: 94dvh;
+    padding: 18px 14px;
+  }
+
+  .workflow-dialog {
+    width: calc(100vw - 16px);
+    max-height: 94dvh;
+    padding: 18px 14px;
+  }
+
+  .detail__summary { grid-template-columns: minmax(0, 1fr); }
+  .detail__row span:last-child { text-align: left; }
+  .detail__header { flex-direction: column; }
+  .workflow-dialog .form__actions { display: grid; grid-template-columns: 1fr; }
 }
 
 .customer-table-wrap {

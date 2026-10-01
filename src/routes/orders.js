@@ -13,6 +13,11 @@ const {
   validateMachineLoad,
 } = require("../validators/orderValidators");
 const { splitLoadWeight } = require("../utils/loadSplitter");
+const {
+  requiredMachineKind,
+  validateMachineAssignments,
+  validateCompletionChoices,
+} = require('../utils/orderWorkflow');
 
 const router = express.Router();
 
@@ -281,6 +286,28 @@ router.post(
   }),
 );
 
+async function finishMachineStage(client, orderId, machineKind) {
+  const completed = await client.query(
+    `UPDATE machine_loads ml
+     SET status = 'completed', completed_at = COALESCE(completed_at, now())
+     FROM machines m
+     WHERE ml.machine_id = m.id AND ml.order_id = $1
+       AND m.machine_kind = $2 AND ml.status IN ('queued', 'running')
+     RETURNING ml.machine_id`,
+    [orderId, machineKind],
+  );
+  const machineIds = [...new Set(completed.rows.map((row) => Number(row.machine_id)))];
+  if (machineIds.length) {
+    await client.query(
+      `UPDATE machines m SET status = 'available'
+       WHERE m.id = ANY($1::integer[]) AND m.status = 'running'
+         AND NOT EXISTS (SELECT 1 FROM machine_loads ml
+                         WHERE ml.machine_id = m.id AND ml.status IN ('queued', 'running'))`,
+      [machineIds],
+    );
+  }
+}
+
 /**
  * PATCH /api/orders/:id/status
  * Moves an order one step along new -> waiting -> washing -> drying -> folding -> ready -> completed.
@@ -289,10 +316,11 @@ router.patch(
   "/:id/status",
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id, "order id");
+    const body = req.body || {};
 
     const order = await db.withTransaction(async (client) => {
       const current = await client.query(
-        'SELECT status FROM orders WHERE id = $1 FOR UPDATE',
+        'SELECT id, status, load_type, weight_kg, price FROM orders WHERE id = $1 FOR UPDATE',
         [id],
       );
       if (current.rows.length === 0) {
@@ -301,8 +329,192 @@ router.patch(
 
       const { status, note } = validateStatusChange(
         current.rows[0].status,
-        req.body,
+        body,
       );
+
+      const before = current.rows[0];
+      const machineKind = requiredMachineKind(before.load_type, status);
+      let assignments = [];
+      try {
+        if (machineKind) {
+          assignments = validateMachineAssignments(
+            body.machine_assignments,
+            before.weight_kg,
+          );
+        } else if (body.machine_assignments !== undefined &&
+                   (!Array.isArray(body.machine_assignments) || body.machine_assignments.length > 0)) {
+          throw new Error('This order stage does not require machine assignments');
+        }
+      } catch (error) {
+        throw new HttpError(400, error.message);
+      }
+
+      let completionAddons = [];
+      let addonDecision = null;
+      if (status === 'completed') {
+        try {
+          completionAddons = validateCompletionChoices(body);
+          addonDecision = body.addon_decision;
+        } catch (error) {
+          throw new HttpError(400, error.message);
+        }
+      } else if (body.addons !== undefined || body.addon_decision !== undefined) {
+        throw new HttpError(400, 'Add-ons can only be confirmed when completing an order');
+      }
+
+      const oldMachineIds = await client.query(
+        'SELECT DISTINCT machine_id FROM machine_loads WHERE order_id = $1',
+        [id],
+      );
+      const lockMachineIds = [...new Set([
+        ...oldMachineIds.rows.map((row) => Number(row.machine_id)),
+        ...assignments.map((assignment) => assignment.machineId),
+      ])].sort((a, b) => a - b);
+      if (lockMachineIds.length) {
+        const lockedMachines = await client.query(
+          `SELECT id FROM machines WHERE id = ANY($1::integer[]) ORDER BY id FOR UPDATE`,
+          [lockMachineIds],
+        );
+        if (lockedMachines.rowCount !== lockMachineIds.length) {
+          throw new HttpError(409, 'One or more assigned machines no longer exist');
+        }
+      }
+
+      if (status === 'washing' && ['wash_fold', 'wash_only'].includes(before.load_type)) {
+        const washerLoads = await client.query(
+          `SELECT COALESCE(SUM(ml.weight_kg), 0) AS weight
+           FROM machine_loads ml JOIN machines m ON m.id = ml.machine_id
+           WHERE ml.order_id = $1 AND m.machine_kind = 'washer' AND ml.status = 'queued'`,
+          [id],
+        );
+        if (Math.round(Number(washerLoads.rows[0].weight) * 100) !==
+            Math.round(Number(before.weight_kg) * 100)) {
+          throw new HttpError(409, 'Assign the full order weight to washer loads before starting the wash');
+        }
+        const started = await client.query(
+          `UPDATE machine_loads ml
+           SET status = 'running', started_at = COALESCE(started_at, now())
+           FROM machines m
+           WHERE ml.machine_id = m.id AND ml.order_id = $1
+             AND m.machine_kind = 'washer' AND ml.status = 'queued'
+           RETURNING ml.machine_id`,
+          [id],
+        );
+        if (started.rowCount) {
+          await client.query(
+            "UPDATE machines SET status = 'running' WHERE id = ANY($1::integer[]) AND status <> 'maintenance'",
+            [[...new Set(started.rows.map((row) => Number(row.machine_id))) ]],
+          );
+        }
+      }
+
+      if (status === 'drying' && ['wash_fold', 'wash_only'].includes(before.load_type)) {
+        await finishMachineStage(client, id, 'washer');
+      }
+
+      if (machineKind) {
+        const machineResult = await client.query(
+          `SELECT id, machine_kind, capacity_kg, status
+           FROM machines WHERE id = ANY($1::integer[]) ORDER BY id`,
+          [assignments.map((assignment) => assignment.machineId)],
+        );
+        const machineById = new Map(machineResult.rows.map((machine) => [Number(machine.id), machine]));
+        for (const assignment of assignments) {
+          const machine = machineById.get(assignment.machineId);
+          if (!machine || machine.machine_kind !== machineKind) {
+            throw new HttpError(409, `Select only available ${machineKind}s for this order stage`);
+          }
+          if (machine.status !== 'available' || Number(machine.capacity_kg) < assignment.weightKg) {
+            throw new HttpError(409, `${machine.name || 'Selected machine'} is unavailable or too small for its assigned load`);
+          }
+        }
+        const busy = await client.query(
+          `SELECT m.name FROM machines m
+           WHERE m.id = ANY($1::integer[])
+             AND EXISTS (SELECT 1 FROM machine_loads ml
+                         WHERE ml.machine_id = m.id AND ml.status IN ('queued', 'running'))`,
+          [assignments.map((assignment) => assignment.machineId)],
+        );
+        if (busy.rowCount) {
+          throw new HttpError(409, `Machine is already assigned: ${busy.rows.map((row) => row.name).join(', ')}`);
+        }
+        const maxLoad = await client.query(
+          'SELECT COALESCE(MAX(load_number), 0) AS max_load FROM machine_loads WHERE order_id = $1',
+          [id],
+        );
+        let loadNumber = Number(maxLoad.rows[0].max_load) + 1;
+        for (const assignment of assignments) {
+          await client.query(
+            `INSERT INTO machine_loads (order_id, machine_id, load_number, weight_kg, status)
+             VALUES ($1, $2, $3, $4, 'queued')`,
+            [id, assignment.machineId, loadNumber, assignment.weightKg],
+          );
+          loadNumber += 1;
+        }
+        if (status === 'drying') {
+          await client.query(
+            "UPDATE machines SET status = 'running' WHERE id = ANY($1::integer[]) AND status <> 'maintenance'",
+            [assignments.map((assignment) => assignment.machineId)],
+          );
+          await client.query(
+            `UPDATE machine_loads SET status = 'running', started_at = COALESCE(started_at, now())
+             WHERE order_id = $1 AND machine_id = ANY($2::integer[]) AND status = 'queued'`,
+            [id, assignments.map((assignment) => assignment.machineId)],
+          );
+        }
+      }
+
+      if (status === 'folding' && ['wash_fold', 'dry_only'].includes(before.load_type)) {
+        const dryerLoads = await client.query(
+          `SELECT COALESCE(SUM(ml.weight_kg), 0) AS weight
+           FROM machine_loads ml JOIN machines m ON m.id = ml.machine_id
+           WHERE ml.order_id = $1 AND m.machine_kind = 'dryer' AND ml.status = 'running'`,
+          [id],
+        );
+        if (Math.round(Number(dryerLoads.rows[0].weight) * 100) !==
+            Math.round(Number(before.weight_kg) * 100)) {
+          throw new HttpError(409, 'Assign and run the full order weight on dryers before folding');
+        }
+        await finishMachineStage(client, id, 'dryer');
+      }
+
+      if (status === 'completed' && addonDecision === 'add' && completionAddons.length) {
+        const addonRows = await client.query(
+          `SELECT id, name, price FROM service_addons
+           WHERE id = ANY($1::integer[]) AND is_active = true
+           ORDER BY id FOR SHARE`,
+          [completionAddons.map((addon) => addon.id)],
+        );
+        if (addonRows.rowCount !== completionAddons.length) {
+          throw new HttpError(409, 'One or more selected add-ons are no longer available');
+        }
+        const previouslyAdded = await client.query(
+          `SELECT addon_id FROM order_addons
+           WHERE order_id = $1 AND addon_id = ANY($2::integer[])`,
+          [id, completionAddons.map((addon) => addon.id)],
+        );
+        if (previouslyAdded.rowCount) {
+          throw new HttpError(409, 'An add-on has already been charged to this order');
+        }
+        const choicesById = new Map(completionAddons.map((addon) => [addon.id, addon]));
+        let addedCents = 0;
+        for (const addon of addonRows.rows) {
+          const quantity = choicesById.get(Number(addon.id)).quantity;
+          const unitPriceCents = Math.round(Number(addon.price) * 100);
+          const lineTotalCents = unitPriceCents * quantity;
+          addedCents += lineTotalCents;
+          await client.query(
+            `INSERT INTO order_addons
+               (order_id, addon_id, name_snapshot, unit_price_snapshot, quantity, line_total)
+             VALUES ($1, $2, $3, $4, $5, $6)`,
+            [id, addon.id, addon.name, unitPriceCents / 100, quantity, lineTotalCents / 100],
+          );
+        }
+        await client.query(
+          'UPDATE orders SET price = price + $2::numeric / 100 WHERE id = $1',
+          [id, addedCents],
+        );
+      }
 
       await client.query(
         `UPDATE orders

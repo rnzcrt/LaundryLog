@@ -30,6 +30,7 @@ const required = [
   'src/middleware/errorHandler.js',
   'public/index.html',
   'public/app.js',
+  'public/workflow.js',
   'public/tabs.js',
   'public/styles.css',
   'test/frontend.test.js',

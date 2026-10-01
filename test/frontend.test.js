@@ -3,6 +3,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const initializeMainTabs = require('../public/tabs');
+const workflow = require('../public/workflow');
 
 class FakeElement {
   constructor(dataset = {}) {
@@ -78,6 +79,43 @@ test('main tabs switch panels, update accessibility state, and preserve inventor
     search: 'softener',
     lowStockOnly: true,
   });
+});
+
+test('workflow helpers request only the machines required by the service stage', () => {
+  assert.equal(workflow.requiredMachineKind('wash_fold', 'waiting'), 'washer');
+  assert.equal(workflow.requiredMachineKind('wash_only', 'waiting'), 'washer');
+  assert.equal(workflow.requiredMachineKind('wash_fold', 'drying'), 'dryer');
+  assert.equal(workflow.requiredMachineKind('dry_only', 'drying'), 'dryer');
+  assert.equal(workflow.requiredMachineKind('dry_only', 'waiting'), null);
+  assert.equal(workflow.requiredMachineKind('wash_only', 'drying'), null);
+  assert.equal(workflow.requiredMachineKind('fold_only', 'waiting'), null);
+  assert.equal(workflow.requiredMachineKind('fold_only', 'drying'), null);
+});
+
+test('workflow load plan uses capacity splits and exact hundredth-kg totals', () => {
+  const plan = workflow.planMachineLoads(18, [
+    { id: 1, capacity_kg: 8 },
+    { id: 2, capacity_kg: 10 },
+    { id: 3, capacity_kg: 8 },
+  ]);
+  assert.deepEqual(plan, [
+    { machine_id: 2, weight_kg: 10 },
+    { machine_id: 1, weight_kg: 8 },
+  ]);
+  assert.equal(workflow.planMachineLoads(18.01, [
+    { id: 1, capacity_kg: 8 }, { id: 2, capacity_kg: 10 },
+  ]), null);
+  assert.equal(workflow.planMachineLoads(0, [{ id: 1, capacity_kg: 10 }]), null);
+});
+
+test('workflow add-on subtotal uses integer cents and rejects invalid quantities', () => {
+  assert.equal(workflow.addonSubtotalCents([
+    { price: 15.5, quantity: 2 }, { price: 0.1, quantity: 3 },
+  ]), 3130);
+  assert.equal(workflow.addonSubtotalCents([{ price: 1, quantity: 0 }]), null);
+  assert.equal(workflow.addonSubtotalCents([
+    { price: 1, quantity: 0 }, { price: 1, quantity: 1 },
+  ]), null);
 });
 
 test('main tabs support arrow, Home and End keyboard navigation', () => {

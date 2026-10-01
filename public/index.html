@@ -388,7 +388,7 @@
     </dialog>
 
     <!-- Order detail -->
-    <dialog class="panel" id="detailDialog">
+    <dialog class="panel panel--detail" id="detailDialog" aria-labelledby="detailDialogTitle">
       <div id="detailBody"></div>
       <div class="form__actions">
         <button type="button" class="button button--secondary" id="closeDetail">
@@ -397,7 +397,16 @@
       </div>
     </dialog>
 
+    <dialog class="panel workflow-dialog" id="workflowDialog" aria-labelledby="workflowTitle">
+      <form id="workflowForm" class="form">
+        <div id="workflowBody"></div>
+        <p class="feedback" id="workflowFeedback" role="status" aria-live="polite"></p>
+        <div class="form__actions" id="workflowActions"></div>
+      </form>
+    </dialog>
+
     <script src="tabs.js"></script>
+    <script src="workflow.js"></script>
     <script src="app.js"></script>
   </body>
 </html>
