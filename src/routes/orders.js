@@ -29,12 +29,15 @@ const ORDER_SELECT = `
          o.note,
          o.created_at,
          o.updated_at,
+         o.due_date::text AS due_date,
+         o.completed_at,
          COALESCE(pay.paid_amount, 0) AS paid_amount,
          pay.paid_method,
          pay.latest_paid_at AS paid_at,
          CASE
-           WHEN COALESCE(pay.paid_amount, 0) >= o.price THEN 'FULLY PAID'
-           ELSE 'UNPAID'
+           WHEN COALESCE(pay.paid_amount, 0) >= o.price THEN 'PAID'
+           WHEN COALESCE(pay.paid_amount, 0) <= 0 THEN 'UNPAID'
+           ELSE 'PARTIAL'
          END AS payment_status,
          GREATEST(o.price - COALESCE(pay.paid_amount, 0), 0) AS outstanding_amount
   FROM orders o
@@ -117,10 +120,30 @@ router.get(
       [id],
     );
 
+    const loads = await db.query(
+      `SELECT ml.id, ml.machine_id, m.name AS machine_name,
+              m.machine_kind, m.capacity_kg, ml.load_number, ml.weight_kg,
+              ml.status, ml.started_at, ml.completed_at, ml.notes
+       FROM machine_loads ml
+       JOIN machines m ON m.id = ml.machine_id
+       WHERE ml.order_id = $1
+       ORDER BY ml.load_number`,
+      [id],
+    );
+
+    const addons = await db.query(
+      `SELECT addon_id, name_snapshot AS name,
+              unit_price_snapshot AS unit_price, quantity, line_total
+       FROM order_addons WHERE order_id = $1 ORDER BY id`,
+      [id],
+    );
+
     res.json({
       order: rows[0],
       history: history.rows,
       payments: payments.rows,
+      loads: loads.rows,
+      addons: addons.rows,
     });
   }),
 );
@@ -136,7 +159,7 @@ router.post(
   asyncHandler(async (req, res) => {
     const input = validateNewOrder(req.body);
 
-    const price = calculateOrderPrice({
+    const basePrice = calculateOrderPrice({
       loadType: input.loadType,
       weightKg: input.weightKg,
       washMachineType: input.washMachineType,
@@ -144,6 +167,34 @@ router.post(
     });
 
     const order = await db.withTransaction(async (client) => {
+      const selectedAddons = [];
+      if (input.addons.length > 0) {
+        const addonRows = await client.query(
+          `SELECT id, name, price
+           FROM service_addons
+           WHERE id = ANY($1::integer[]) AND is_active = true`,
+          [input.addons.map((addon) => addon.id)],
+        );
+        const addonsById = new Map(addonRows.rows.map((addon) => [Number(addon.id), addon]));
+        if (addonsById.size !== input.addons.length) {
+          throw new HttpError(400, 'One or more selected add-ons are unavailable');
+        }
+        for (const requested of input.addons) {
+          const addon = addonsById.get(requested.id);
+          const unitPriceCents = Math.round(Number(addon.price) * 100);
+          selectedAddons.push({
+            id: addon.id,
+            name: addon.name,
+            unitPriceCents,
+            quantity: requested.quantity,
+            lineTotalCents: unitPriceCents * requested.quantity,
+          });
+        }
+      }
+      const price = (
+        Math.round(basePrice * 100) +
+        selectedAddons.reduce((sum, addon) => sum + addon.lineTotalCents, 0)
+      ) / 100;
       let customerId = input.customerId;
 
       if (customerId === null) {
@@ -155,10 +206,21 @@ router.post(
           customerId = existing.rows[0].id;
         } else {
           const created = await client.query(
-            "INSERT INTO customers (name, phone) VALUES ($1, $2) RETURNING id",
+            `INSERT INTO customers (name, phone)
+             VALUES ($1, $2)
+             ON CONFLICT (phone) DO NOTHING
+             RETURNING id`,
             [input.name, input.phone],
           );
-          customerId = created.rows[0].id;
+          if (created.rows.length > 0) {
+            customerId = created.rows[0].id;
+          } else {
+            const concurrent = await client.query(
+              'SELECT id FROM customers WHERE phone = $1',
+              [input.phone],
+            );
+            customerId = concurrent.rows[0].id;
+          }
         }
       } else {
         const found = await client.query(
@@ -171,8 +233,8 @@ router.post(
       }
 
       const inserted = await client.query(
-        `INSERT INTO orders (customer_id, load_type, weight_kg, item_count, price, note)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO orders (customer_id, load_type, weight_kg, item_count, price, note, due_date)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING id`,
         [
           customerId,
@@ -181,9 +243,20 @@ router.post(
           input.itemCount,
           price,
           input.note,
+          input.dueDate,
         ],
       );
       const orderId = inserted.rows[0].id;
+
+      for (const addon of selectedAddons) {
+        await client.query(
+          `INSERT INTO order_addons
+             (order_id, addon_id, name_snapshot, unit_price_snapshot, quantity, line_total)
+           VALUES ($1, $2, $3, $4, $5, $6)`,
+          [orderId, addon.id, addon.name, addon.unitPriceCents / 100,
+            addon.quantity, addon.lineTotalCents / 100],
+        );
+      }
 
       await client.query(
         "INSERT INTO order_status_history (order_id, status, note) VALUES ($1, $2, $3)",
@@ -193,7 +266,15 @@ router.post(
       const full = await client.query(`${ORDER_SELECT} WHERE o.id = $1`, [
         orderId,
       ]);
-      return full.rows[0];
+      return {
+        ...full.rows[0],
+        addons: selectedAddons.map((addon) => ({
+          name: addon.name,
+          unit_price: addon.unitPriceCents / 100,
+          quantity: addon.quantity,
+          line_total: addon.lineTotalCents / 100,
+        })),
+      };
     });
 
     res.status(201).location(`/api/orders/${order.id}`).json({ order });
@@ -209,21 +290,26 @@ router.patch(
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id, "order id");
 
-    const current = await db.query("SELECT status FROM orders WHERE id = $1", [
-      id,
-    ]);
-    if (current.rows.length === 0) {
-      throw new HttpError(404, `No order with id ${id}`);
-    }
-
-    const { status, note } = validateStatusChange(
-      current.rows[0].status,
-      req.body,
-    );
-
     const order = await db.withTransaction(async (client) => {
+      const current = await client.query(
+        'SELECT status FROM orders WHERE id = $1 FOR UPDATE',
+        [id],
+      );
+      if (current.rows.length === 0) {
+        throw new HttpError(404, `No order with id ${id}`);
+      }
+
+      const { status, note } = validateStatusChange(
+        current.rows[0].status,
+        req.body,
+      );
+
       await client.query(
-        "UPDATE orders SET status = $1, updated_at = now() WHERE id = $2",
+        `UPDATE orders
+         SET status = $1,
+             updated_at = now(),
+             completed_at = CASE WHEN $1 = 'completed' THEN COALESCE(completed_at, now()) ELSE completed_at END
+         WHERE id = $2`,
         [status, id],
       );
       await client.query(
@@ -298,6 +384,17 @@ router.get(
   "/:id/load-plan",
   asyncHandler(async (req, res) => {
     const orderId = parseId(req.params.id, "order_id");
+    const capacityKg = Number(req.query.capacity_kg);
+
+    if (!Number.isFinite(capacityKg) || capacityKg <= 0) {
+      throw new HttpError(400, "capacity_kg must be a number greater than 0");
+    }
+    if (Math.abs(capacityKg * 100 - Math.round(capacityKg * 100)) > 1e-7) {
+      throw new HttpError(400, "capacity_kg must have no more than two decimal places");
+    }
+    if (capacityKg < 0.1 || capacityKg > 100) {
+      throw new HttpError(400, "capacity_kg must be from 0.1 to 100 kg");
+    }
 
     const { rows } = await db.query(
       `SELECT id, weight_kg
@@ -316,13 +413,12 @@ router.get(
       throw new HttpError(409, "This order does not have a valid weight");
     }
 
-    const capacityKg = Number(req.query.capacity_kg);
-
-    if (!Number.isFinite(capacityKg) || capacityKg <= 0) {
-      throw new HttpError(400, "capacity_kg must be a number greater than 0");
+    let loads;
+    try {
+      loads = splitLoadWeight(weightKg, capacityKg);
+    } catch (error) {
+      throw new HttpError(400, error.message);
     }
-
-    const loads = splitLoadWeight(weightKg, capacityKg);
 
     res.json({
       order_id: orderId,
@@ -348,7 +444,7 @@ router.post(
       await client.query("BEGIN");
 
       const orderResult = await client.query(
-        `SELECT id, weight_kg
+        `SELECT id, weight_kg, load_type
          FROM orders
          WHERE id = $1
          FOR UPDATE`,
@@ -358,11 +454,16 @@ router.post(
       if (orderResult.rowCount === 0) {
         throw new HttpError(404, `No order with id ${orderId}`);
       }
+      const orderRow = orderResult.rows[0];
+      if (!orderRow.weight_kg || orderRow.load_type === 'fold_only') {
+        throw new HttpError(409, 'This order does not have a machine-assignable load');
+      }
 
       const machineResult = await client.query(
         `SELECT id, name, machine_kind, capacity_kg, status
          FROM machines
-         WHERE id = $1`,
+         WHERE id = $1
+         FOR UPDATE`,
         [machineId],
       );
 
@@ -375,12 +476,35 @@ router.post(
       if (machine.status === "maintenance") {
         throw new HttpError(409, "This machine is currently in maintenance");
       }
+      if (machine.status === 'running') {
+        throw new HttpError(409, 'This machine is already running a load');
+      }
+
+      const expectedKind = orderRow.load_type === 'wash_only'
+        ? 'washer'
+        : orderRow.load_type === 'dry_only'
+          ? 'dryer'
+          : null;
+      if (expectedKind && machine.machine_kind !== expectedKind) {
+        throw new HttpError(409, `This order requires a ${expectedKind}`);
+      }
 
       if (weightKg > Number(machine.capacity_kg)) {
         throw new HttpError(
           409,
           `This load exceeds the machine capacity of ${machine.capacity_kg}kg`,
         );
+      }
+
+      const assignedResult = await client.query(
+        'SELECT COALESCE(SUM(weight_kg), 0) AS assigned_kg FROM machine_loads WHERE order_id = $1',
+        [orderId],
+      );
+      const assignedCentiKg = Math.round(Number(assignedResult.rows[0].assigned_kg) * 100);
+      const nextCentiKg = assignedCentiKg + Math.round(weightKg * 100);
+      const orderCentiKg = Math.round(Number(orderRow.weight_kg) * 100);
+      if (nextCentiKg > orderCentiKg) {
+        throw new HttpError(409, 'Assigned load weight cannot exceed the order weight');
       }
 
       const existingLoad = await client.query(

@@ -1,40 +1,81 @@
--- Sample data for development.
--- Run with: psql "$DATABASE_URL" -f db/seed.sql
--- Safe to re-run after db/schema.sql, which recreates the tables.
+-- Idempotent sample data for a local/demo database. Every generated order and
+-- movement has a marker so rerunning this file does not duplicate sample rows.
+BEGIN;
 
 INSERT INTO customers (name, phone, notes) VALUES
-    ('Maria Santos',   '0917-555-0142', 'Prefers fabric softener, no bleach'),
+    ('Maria Santos', '0917-555-0142', 'Prefers fabric softener, no bleach'),
     ('Juan Dela Cruz', '0928-555-0199', NULL),
-    ('Ana Reyes',      '0905-555-0163', 'Calls before pickup'),
-    ('Paolo Mendoza',  '0918-555-0177', NULL);
+    ('Ana Reyes', '0905-555-0163', 'Calls before pickup'),
+    ('Paolo Mendoza', '0918-555-0177', NULL)
+ON CONFLICT (phone) DO NOTHING;
 
-INSERT INTO orders (customer_id, load_type, weight_kg, item_count, price, status, note, created_at) VALUES
-    (1, 'wash_fold',  4.50, NULL, 315.00, 'washing',   'Two bedsheets included', now() - interval '3 hours'),
-    (2, 'dry_clean',  NULL,    2, 480.00, 'ready',     NULL,                     now() - interval '1 day'),
-    (3, 'wash_fold',  6.20, NULL, 434.00, 'picked_up', NULL,                     now() - interval '2 days'),
-    (1, 'press_only', NULL,    5, 175.00, 'received',  'Polo barongs, hang dry', now() - interval '40 minutes'),
-    (4, 'wash_only',  3.00, NULL, 180.00, 'received',  NULL,                     now() - interval '15 minutes'),
-    (2, 'wash_fold',  8.00, NULL, 560.00, 'ready',     'Rush order',             now() - interval '5 hours'),
-    (3, 'dry_clean',  NULL,    1, 350.00, 'washing',   NULL,                     now() - interval '6 hours');
+WITH seed_orders(name, phone, load_type, weight_kg, item_count, price, status, note) AS (
+    VALUES
+      ('Maria Santos', '0917-555-0142', 'wash_fold', 4.50::numeric, NULL::integer, 315.00::numeric, 'washing', '[LaundryLog sample] Bedsheets included'),
+      ('Juan Dela Cruz', '0928-555-0199', 'dry_clean', NULL::numeric, 2, 480.00::numeric, 'ready', '[LaundryLog sample] Dry clean items'),
+      ('Ana Reyes', '0905-555-0163', 'wash_fold', 6.20::numeric, NULL::integer, 434.00::numeric, 'completed', '[LaundryLog sample] Pickup example'),
+      ('Paolo Mendoza', '0918-555-0177', 'wash_only', 3.00::numeric, NULL::integer, 180.00::numeric, 'new', '[LaundryLog sample] New drop-off')
+), inserted AS (
+    INSERT INTO orders (customer_id, load_type, weight_kg, item_count, price, status, note, created_at)
+    SELECT c.id, s.load_type, s.weight_kg, s.item_count, s.price, s.status, s.note, now() - interval '1 hour'
+    FROM seed_orders s
+    JOIN customers c ON c.phone = s.phone
+    WHERE NOT EXISTS (
+      SELECT 1 FROM orders o WHERE o.note = s.note
+    )
+    RETURNING id, status, note
+)
+INSERT INTO order_status_history (order_id, status, note, changed_at)
+SELECT id, status, 'LaundryLog sample data', now() - interval '1 hour'
+FROM inserted;
 
--- Timeline entries matching the statuses above.
-INSERT INTO order_status_history (order_id, status, note, changed_at) VALUES
-    (1, 'received', 'Dropped off at counter', now() - interval '3 hours'),
-    (1, 'washing',  NULL,                     now() - interval '2 hours'),
-    (2, 'received', NULL,                     now() - interval '1 day'),
-    (2, 'washing',  NULL,                     now() - interval '22 hours'),
-    (2, 'ready',    'Bagged and tagged',      now() - interval '18 hours'),
-    (3, 'received', NULL,                     now() - interval '2 days'),
-    (3, 'washing',  NULL,                     now() - interval '47 hours'),
-    (3, 'ready',    NULL,                     now() - interval '44 hours'),
-    (3, 'picked_up','Paid in cash',           now() - interval '43 hours'),
-    (4, 'received', NULL,                     now() - interval '40 minutes'),
-    (5, 'received', NULL,                     now() - interval '15 minutes'),
-    (6, 'received', NULL,                     now() - interval '5 hours'),
-    (6, 'washing',  NULL,                     now() - interval '4 hours'),
-    (6, 'ready',    NULL,                     now() - interval '1 hour'),
-    (7, 'received', NULL,                     now() - interval '6 hours'),
-    (7, 'washing',  NULL,                     now() - interval '5 hours');
+INSERT INTO payments (order_id, amount, method, paid_at)
+SELECT o.id, 200.00, 'cash', now() - interval '50 minutes'
+FROM orders o
+WHERE o.note = '[LaundryLog sample] Bedsheets included'
+  AND NOT EXISTS (SELECT 1 FROM payments p WHERE p.order_id = o.id);
 
-INSERT INTO payments (order_id, amount, method, paid_at) VALUES
-    (3, 434.00, 'cash', now() - interval '43 hours');
+INSERT INTO payments (order_id, amount, method, paid_at)
+SELECT o.id, 115.00, 'gcash', now() - interval '10 minutes'
+FROM orders o
+WHERE o.note = '[LaundryLog sample] Bedsheets included'
+  AND NOT EXISTS (
+    SELECT 1 FROM payments p WHERE p.order_id = o.id AND p.method = 'gcash'
+  );
+
+INSERT INTO machine_loads
+    (order_id, machine_id, load_number, weight_kg, status, completed_at, notes)
+SELECT o.id, m.id, 1, LEAST(o.weight_kg, m.capacity_kg), 'completed', now(), 'LaundryLog sample load'
+FROM orders o
+JOIN machines m ON m.name = 'Regular Washer 1'
+WHERE o.note = '[LaundryLog sample] Bedsheets included'
+  AND NOT EXISTS (
+    SELECT 1 FROM machine_loads ml
+    WHERE ml.order_id = o.id AND ml.load_number = 1
+  );
+
+INSERT INTO products (name, unit, stock_quantity, low_stock_threshold) VALUES
+    ('Laundry detergent', 'liters', 12, 3),
+    ('Fabric softener', 'liters', 7, 2),
+    ('Stain remover', 'bottles', 2, 3)
+ON CONFLICT (name) DO NOTHING;
+
+INSERT INTO product_movements (product_id, movement_type, quantity, notes)
+SELECT p.id, 'stock_in', 12, 'LaundryLog sample seed: opening detergent stock'
+FROM products p
+WHERE p.name = 'Laundry detergent'
+  AND NOT EXISTS (SELECT 1 FROM product_movements WHERE notes = 'LaundryLog sample seed: opening detergent stock');
+
+INSERT INTO product_movements (product_id, movement_type, quantity, notes)
+SELECT p.id, 'stock_in', 7, 'LaundryLog sample seed: opening softener stock'
+FROM products p
+WHERE p.name = 'Fabric softener'
+  AND NOT EXISTS (SELECT 1 FROM product_movements WHERE notes = 'LaundryLog sample seed: opening softener stock');
+
+INSERT INTO product_movements (product_id, movement_type, quantity, notes)
+SELECT p.id, 'stock_in', 2, 'LaundryLog sample seed: opening stain remover stock'
+FROM products p
+WHERE p.name = 'Stain remover'
+  AND NOT EXISTS (SELECT 1 FROM product_movements WHERE notes = 'LaundryLog sample seed: opening stain remover stock');
+
+COMMIT;

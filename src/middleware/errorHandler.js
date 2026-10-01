@@ -28,17 +28,17 @@ function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-va
     case '23505': // unique_violation
       return res.status(409).json({
         error: 'That record already exists',
-        message: err.detail || 'A unique field is already taken.',
+        message: 'A unique field is already taken.',
       });
     case '23503': // foreign_key_violation
       return res.status(400).json({
         error: 'Referenced record does not exist',
-        message: err.detail || 'A referenced id was not found.',
+        message: 'A referenced id was not found.',
       });
     case '23514': // check_violation
       return res.status(400).json({
         error: 'Value rejected by the database',
-        message: err.constraint || 'A check constraint failed.',
+        message: 'One or more values do not meet the data rules.',
       });
     case '22P02': // invalid_text_representation
       return res.status(400).json({ error: 'Invalid value in request' });
@@ -52,7 +52,7 @@ function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-va
       break;
   }
 
-  console.error('Unhandled error:', err);
+  console.error('Unhandled error:', err.message || 'Unknown error');
   res.status(500).json({ error: 'Something went wrong on the server' });
 }
 

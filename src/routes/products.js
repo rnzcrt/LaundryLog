@@ -23,8 +23,25 @@ const PRODUCT_SELECT = `
 router.get(
   "/",
   asyncHandler(async (req, res) => {
+    const conditions = [];
+    const params = [];
+
+    if (req.query.q && String(req.query.q).trim()) {
+      params.push(`%${String(req.query.q).trim()}%`);
+      conditions.push(`name ILIKE $${params.length}`);
+    }
+    if (req.query.low_stock !== undefined) {
+      if (!['true', 'false'].includes(req.query.low_stock)) {
+        throw new HttpError(400, 'low_stock must be true or false');
+      }
+      if (req.query.low_stock === 'true') {
+        conditions.push('stock_quantity <= low_stock_threshold');
+      }
+    }
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const { rows } = await db.query(
-      `${PRODUCT_SELECT} ORDER BY name`,
+      `${PRODUCT_SELECT} ${where} ORDER BY name`,
+      params,
     );
 
     res.json({ count: rows.length, products: rows });
@@ -42,10 +59,14 @@ router.post(
 
     if (typeof name !== "string" || !name.trim()) {
       errors.push({ field: "name", message: "Product name is required" });
+    } else if (name.trim().length > 120) {
+      errors.push({ field: "name", message: "Product name must be 120 characters or fewer" });
     }
 
     if (typeof unit !== "string" || !unit.trim()) {
       errors.push({ field: "unit", message: "Unit is required" });
+    } else if (unit.trim().length > 30) {
+      errors.push({ field: "unit", message: "Unit must be 30 characters or fewer" });
     }
 
     const stock = Number(stock_quantity);
@@ -134,10 +155,14 @@ router.patch(
 
       if (typeof next.name !== "string" || !next.name.trim()) {
         errors.push({ field: "name", message: "Product name is required" });
+      } else if (next.name.trim().length > 120) {
+        errors.push({ field: "name", message: "Product name must be 120 characters or fewer" });
       }
 
       if (typeof next.unit !== "string" || !next.unit.trim()) {
         errors.push({ field: "unit", message: "Unit is required" });
+      } else if (next.unit.trim().length > 30) {
+        errors.push({ field: "unit", message: "Unit must be 30 characters or fewer" });
       }
 
       if (!Number.isFinite(next.stock_quantity) || next.stock_quantity < 0) {
@@ -237,6 +262,9 @@ router.post(
         field: "notes",
         message: "Notes must be text",
       });
+    }
+    if (typeof notes === 'string' && notes.trim().length > 500) {
+      errors.push({ field: "notes", message: "Notes must be 500 characters or fewer" });
     }
 
     if (errors.length) {

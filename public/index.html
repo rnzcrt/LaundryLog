@@ -15,6 +15,16 @@
     </header>
 
     <main class="page">
+      <nav class="main-tabs" role="tablist" aria-label="LaundryLog sections">
+        <button class="main-tab is-active" id="tab-orders" type="button" role="tab" aria-selected="true" aria-controls="panel-orders" tabindex="0" data-tab="orders">Orders</button>
+        <button class="main-tab" id="tab-kanban" type="button" role="tab" aria-selected="false" aria-controls="panel-kanban" tabindex="-1" data-tab="kanban">Kanban</button>
+        <button class="main-tab" id="tab-inventory" type="button" role="tab" aria-selected="false" aria-controls="panel-inventory" tabindex="-1" data-tab="inventory">Inventory</button>
+        <button class="main-tab" id="tab-customers" type="button" role="tab" aria-selected="false" aria-controls="panel-customers" tabindex="-1" data-tab="customers">Customers</button>
+        <button class="main-tab" id="tab-reports" type="button" role="tab" aria-selected="false" aria-controls="panel-reports" tabindex="-1" data-tab="reports">Reports</button>
+        <button class="main-tab" id="tab-management" type="button" role="tab" aria-selected="false" aria-controls="panel-management" tabindex="-1" data-tab="management">Management</button>
+      </nav>
+
+      <section class="tab-panel" id="panel-orders" role="tabpanel" aria-labelledby="tab-orders" data-panel="orders">
       <section class="dashboard-section">
         <h2>Dashboard</h2>
 
@@ -40,54 +50,15 @@
           </article>
         </div>
       </section>
-      <section class="reports-section">
-        <h2>Sales &amp; Collections Report</h2>
-        <form id="reportForm" class="form">
-          <label class="field">
-            <span>From</span>
-            <input id="reportFrom" type="date" required />
-          </label>
-          <label class="field">
-            <span>To</span>
-            <input id="reportTo" type="date" required />
-          </label>
-          <button class="button button--primary" type="submit">
-            Generate report
-          </button>
-        </form>
-
-        <div class="dashboard-grid">
-          <article class="dashboard-card">
-            <h3>Sales in Period</h3>
-            <p id="reportSales">₱0.00</p>
-          </article>
-          <article class="dashboard-card">
-            <h3>Collections in Period</h3>
-            <p id="reportCollections">₱0.00</p>
-          </article>
-          <article class="dashboard-card">
-            <h3>Outstanding on Period Orders</h3>
-            <p id="reportOutstanding">₱0.00</p>
-          </article>
-        </div>
-
-        <h3>Daily Breakdown</h3>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th scope="col">Date</th>
-                <th scope="col">Sales</th>
-                <th scope="col">Collections</th>
-              </tr>
-            </thead>
-            <tbody id="reportDaily">
-              <tr><td colspan="3">Choose a date range to generate a report.</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
+      <label class="field order-search">
+        <span>Search orders</span>
+        <input
+          id="orderSearch"
+          type="search"
+          placeholder="Customer name or phone"
+          autocomplete="off"
+        />
+      </label>
       <nav class="filters" id="filters" aria-label="Filter orders by status">
         <button class="filter is-active" data-status="all">All</button>
         <button class="filter" data-status="new">New</button>
@@ -99,8 +70,14 @@
         <button class="filter" data-status="completed">Completed</button>
       </nav>
 
-      <p class="feedback" id="feedback" role="status"></p>
+      <p class="feedback" id="feedback" role="status" aria-live="polite"></p>
+      <section class="orders-section">
+        <h2>All Orders</h2>
+        <section class="orders" id="orders" aria-live="polite"></section>
+      </section>
+      </section>
 
+      <section class="tab-panel" id="panel-kanban" role="tabpanel" aria-labelledby="tab-kanban" data-panel="kanban" hidden>
       <section class="kanban-section">
         <h2>Kanban Board</h2>
         <div
@@ -109,28 +86,21 @@
           aria-label="Orders by workflow status"
         ></div>
       </section>
-
-      <section class="orders-section">
-        <h2>All Orders</h2>
-        <section class="orders" id="orders" aria-live="polite"></section>
       </section>
-      <section class="customers-section">
-        <h2>Customers</h2>
 
-        <label class="field">
-          <span>Search customers</span>
-          <input
-            id="customerSearch"
-            type="search"
-            placeholder="Name or phone"
-            autocomplete="off"
-          />
-        </label>
-
-        <div id="customers" aria-live="polite"></div>
-      </section>
+      <section class="tab-panel" id="panel-inventory" role="tabpanel" aria-labelledby="tab-inventory" data-panel="inventory" hidden>
+        <p class="feedback" id="inventoryFeedback" role="status" aria-live="polite"></p>
       <section class="products-section">
         <h2>Products &amp; Soaps Inventory</h2>
+
+        <label class="field">
+          <span>Search inventory</span>
+          <input id="productSearch" type="search" placeholder="Product name" autocomplete="off" />
+        </label>
+        <label class="inventory-low-stock-filter">
+          <input id="lowStockOnly" type="checkbox" />
+          <span>Show low stock only</span>
+        </label>
 
         <form id="productForm" class="form">
           <label class="field">
@@ -188,6 +158,143 @@
 
         <div id="products" aria-live="polite"></div>
       </section>
+      </section>
+
+      <section class="tab-panel" id="panel-customers" role="tabpanel" aria-labelledby="tab-customers" data-panel="customers" hidden>
+      <section class="customers-section">
+        <h2>Customers</h2>
+
+        <form id="customerForm" class="form customer-create-form">
+          <label class="field">
+            <span>Customer name</span>
+            <input name="name" type="text" maxlength="120" required />
+          </label>
+          <label class="field">
+            <span>Phone number</span>
+            <input name="phone" type="tel" maxlength="40" required />
+          </label>
+          <label class="field">
+            <span>Notes (optional)</span>
+            <input name="notes" type="text" maxlength="500" />
+          </label>
+          <button class="button button--primary" type="submit">Add customer</button>
+        </form>
+        <p class="feedback" id="customerFeedback" role="status" aria-live="polite"></p>
+
+        <label class="field">
+          <span>Search customers</span>
+          <input
+            id="customerSearch"
+            type="search"
+            placeholder="Name or phone"
+            autocomplete="off"
+          />
+        </label>
+
+        <div id="customers" aria-live="polite"></div>
+      </section>
+      </section>
+
+      <section class="tab-panel" id="panel-management" role="tabpanel" aria-labelledby="tab-management" data-panel="management" hidden>
+        <section class="management-section">
+          <h2>Machine management</h2>
+          <p class="management-help">Add machines or update their name, capacity, and availability. Running machines are controlled by assigned loads.</p>
+          <form id="machineForm" class="form management-form">
+            <label class="field">
+              <span>Machine name</span>
+              <input name="name" type="text" maxlength="120" required />
+            </label>
+            <label class="field">
+              <span>Type</span>
+              <select name="machine_type" required>
+                <option value="regular">Regular</option>
+                <option value="titan">Titan</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Kind</span>
+              <select name="machine_kind" required>
+                <option value="washer">Washer</option>
+                <option value="dryer">Dryer</option>
+              </select>
+            </label>
+            <label class="field">
+              <span>Capacity (kg)</span>
+              <input name="capacity_kg" type="number" min="0.1" max="100" step="0.01" value="8" required />
+            </label>
+            <button class="button button--primary" type="submit">Add machine</button>
+          </form>
+          <div id="machines" aria-live="polite"></div>
+        </section>
+
+        <section class="management-section">
+          <h2>Service add-ons</h2>
+          <p class="management-help">Add-ons are selectable on new orders. Price changes apply to future orders; existing order snapshots stay unchanged.</p>
+          <form id="addonForm" class="form management-form">
+            <label class="field">
+              <span>Add-on name</span>
+              <input name="name" type="text" maxlength="120" required />
+            </label>
+            <label class="field">
+              <span>Price (₱)</span>
+              <input name="price" type="number" min="0" step="0.01" required />
+            </label>
+            <button class="button button--primary" type="submit">Add add-on</button>
+          </form>
+          <div id="managedAddons" aria-live="polite"></div>
+        </section>
+        <p class="feedback" id="managementFeedback" role="status" aria-live="polite"></p>
+      </section>
+
+      <section class="tab-panel" id="panel-reports" role="tabpanel" aria-labelledby="tab-reports" data-panel="reports" hidden>
+      <section class="reports-section">
+        <h2>Sales &amp; Collections Report</h2>
+        <form id="reportForm" class="form">
+          <label class="field">
+            <span>From</span>
+            <input id="reportFrom" type="date" required />
+          </label>
+          <label class="field">
+            <span>To</span>
+            <input id="reportTo" type="date" required />
+          </label>
+          <button class="button button--primary" type="submit">
+            Generate report
+          </button>
+        </form>
+
+        <div class="dashboard-grid report-summary-grid">
+          <article class="dashboard-card">
+            <h3>Sales in Period</h3>
+            <p id="reportSales">₱0.00</p>
+          </article>
+          <article class="dashboard-card">
+            <h3>Collections in Period</h3>
+            <p id="reportCollections">₱0.00</p>
+          </article>
+          <article class="dashboard-card">
+            <h3>Outstanding on Period Orders</h3>
+            <p id="reportOutstanding">₱0.00</p>
+          </article>
+        </div>
+
+        <h3>Daily Breakdown</h3>
+        <div class="table-wrap report-table-wrap">
+          <table class="report-daily-table">
+            <thead>
+              <tr>
+                <th scope="col">Date</th>
+                <th scope="col">Sales</th>
+                <th scope="col">Collections</th>
+              </tr>
+            </thead>
+            <tbody id="reportDaily">
+              <tr><td class="report-empty" colspan="3">Generate a report to see daily sales and collections.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+      </section>
     </main>
 
     <!-- New order -->
@@ -206,6 +313,10 @@
             autocomplete="off"
             placeholder="0917-555-0000"
           />
+        </label>
+        <label class="field">
+          <span>Due date (optional)</span>
+          <input name="due_date" type="date" />
         </label>
         <label class="field">
           <span>Load type</span>
@@ -250,6 +361,10 @@
           Price is calculated automatically from the selected service and
           machine type.
         </p>
+        <fieldset class="order-addons field">
+          <legend>Service add-ons</legend>
+          <div id="orderAddons"><p>Loading add-ons…</p></div>
+        </fieldset>
         <label class="field">
           <span>Note (optional)</span>
           <input name="note" autocomplete="off" />
@@ -282,6 +397,7 @@
       </div>
     </dialog>
 
+    <script src="tabs.js"></script>
     <script src="app.js"></script>
   </body>
 </html>

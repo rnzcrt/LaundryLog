@@ -5,6 +5,8 @@ const LOAD_LABELS = {
   wash_only: "Wash Only",
   dry_only: "Dry Only",
   fold_only: "Fold Only",
+  dry_clean: "Dry Clean",
+  press_only: "Press Only",
 };
 
 const STATUS_LABELS = {
@@ -36,8 +38,10 @@ const newOrderForm = document.getElementById("newOrderForm");
 const formErrors = document.getElementById("formErrors");
 const detailDialog = document.getElementById("detailDialog");
 const detailBody = document.getElementById("detailBody");
+const orderAddonsEl = document.getElementById("orderAddons");
 
 let activeStatus = "all";
+let activeOrderQuery = "";
 let currentKanbanOrders = [];
 
 /** Fetch wrapper that turns an API error body into a thrown Error. */
@@ -68,6 +72,12 @@ function setFeedback(message, isError = false) {
   feedbackEl.classList.toggle("is-error", isError);
 }
 
+function setInventoryFeedback(message, isError = false) {
+  const inventoryFeedbackEl = document.getElementById("inventoryFeedback");
+  inventoryFeedbackEl.textContent = message;
+  inventoryFeedbackEl.classList.toggle("is-error", isError);
+}
+
 function measure(order) {
   return order.weight_kg
     ? `${Number(order.weight_kg)}kg`
@@ -85,17 +95,32 @@ function formatDate(value) {
   });
 }
 
+function formatReportDate(value) {
+  return new Date(`${value}T00:00:00+08:00`).toLocaleDateString("en-PH", {
+    dateStyle: "medium",
+    timeZone: "Asia/Manila",
+  });
+}
+
 async function loadOrders() {
   try {
     const { orders } = await api("/api/orders");
+    const query = activeOrderQuery.toLocaleLowerCase();
+    const searchedOrders = query
+      ? orders.filter((order) =>
+          `${order.customer_name} ${order.customer_phone}`
+            .toLocaleLowerCase()
+            .includes(query),
+        )
+      : orders;
 
     renderDashboard(orders);
-    renderKanban(orders);
+    renderKanban(searchedOrders);
 
     const visibleOrders =
       activeStatus === "all"
-        ? orders
-        : orders.filter((order) => order.status === activeStatus);
+        ? searchedOrders
+        : searchedOrders.filter((order) => order.status === activeStatus);
 
     renderOrders(visibleOrders);
 
@@ -294,7 +319,7 @@ function renderOrders(orders) {
 
 async function openDetail(id) {
   try {
-    const { order, history, payments = [] } = await api(`/api/orders/${id}`);
+    const { order, history, payments = [], loads = [], addons = [] } = await api(`/api/orders/${id}`);
     detailBody.innerHTML = "";
 
     const title = document.createElement("h2");
@@ -315,7 +340,11 @@ async function openDetail(id) {
         `${order.payment_status} — Paid: ${peso(order.paid_amount)} — Outstanding: ${peso(order.outstanding_amount)}`,
       ],
     ];
+    if (order.due_date) rows.push(["Due date", order.due_date]);
     if (order.note) rows.push(["Note", order.note]);
+    if (order.completed_at) {
+      rows.push(["Completed", formatDate(order.completed_at)]);
+    }
 
     const rowsEl = document.createElement("div");
     for (const [label, value] of rows) {
@@ -362,11 +391,46 @@ async function openDetail(id) {
 
     detailBody.append(paymentList);
 
+    const addonsTitle = document.createElement("h3");
+    addonsTitle.textContent = "Service add-ons";
+    detailBody.append(addonsTitle);
+    const addonList = document.createElement("ul");
+    addonList.className = "timeline";
+    if (addons.length === 0) {
+      const emptyAddon = document.createElement("li");
+      emptyAddon.textContent = "No add-ons on this order.";
+      addonList.append(emptyAddon);
+    } else {
+      for (const addon of addons) {
+        const item = document.createElement("li");
+        item.textContent = `${addon.name} × ${addon.quantity} — ${peso(addon.line_total)} (${peso(addon.unit_price)} each)`;
+        addonList.append(item);
+      }
+    }
+    detailBody.append(addonList);
+
+    const loadsTitle = document.createElement("h3");
+    loadsTitle.textContent = "Machine loads";
+    detailBody.append(loadsTitle);
+    const loadsList = document.createElement("ul");
+    loadsList.className = "timeline";
+    if (loads.length === 0) {
+      const emptyLoad = document.createElement("li");
+      emptyLoad.textContent = "No machine loads assigned.";
+      loadsList.append(emptyLoad);
+    } else {
+      for (const load of loads) {
+        const item = document.createElement("li");
+        item.textContent = `Load ${load.load_number}: ${load.machine_name} — ${Number(load.weight_kg)}kg — ${load.status}${load.notes ? ` (${load.notes})` : ""}`;
+        loadsList.append(item);
+      }
+    }
+    detailBody.append(loadsList);
+
     const balance = Number(order.outstanding_amount || 0);
     if (balance > 0) {
       const paymentForm = document.createElement("form");
       paymentForm.className = "payment-form";
-      paymentForm.style.marginTop = "16px";
 
       const amountLabel = document.createElement("label");
       amountLabel.className = "field";
@@ -442,8 +506,7 @@ async function openDetail(id) {
     const next = NEXT_STATUS[order.status];
     if (next) {
       const advance = document.createElement("button");
-      advance.className = "button button--accent";
-      advance.style.marginTop = "16px";
+      advance.className = "button button--accent detail__advance";
       advance.textContent = `Mark as ${STATUS_LABELS[next].toLowerCase()}`;
       advance.addEventListener("click", () => changeStatus(order.id, next));
       detailBody.append(advance);
@@ -457,7 +520,7 @@ async function openDetail(id) {
 
 async function openCustomerHistory(id) {
   try {
-    const { customer, orders } = await api(`/api/customers/${id}`);
+    const { customer, orders, summary } = await api(`/api/customers/${id}`);
     detailBody.innerHTML = "";
 
     const title = document.createElement("h2");
@@ -471,6 +534,52 @@ async function openCustomerHistory(id) {
     historyTitle.textContent = `Order history (${orders.length})`;
 
     detailBody.append(title, phone, historyTitle);
+
+    const spending = document.createElement("p");
+    spending.textContent = `Spending: ${peso(summary.spending)} — Paid: ${peso(summary.paid)} — Outstanding: ${peso(summary.outstanding)}`;
+    detailBody.append(spending);
+
+    const editForm = document.createElement("form");
+    editForm.className = "customer-edit form";
+    for (const [name, labelText, value] of [
+      ["name", "Customer name", customer.name],
+      ["phone", "Phone", customer.phone],
+      ["notes", "Notes", customer.notes || ""],
+    ]) {
+      const label = document.createElement("label");
+      label.className = "field";
+      const span = document.createElement("span");
+      span.textContent = labelText;
+      const input = document.createElement("input");
+      input.name = name;
+      input.value = value;
+      input.maxLength = name === "name" ? 120 : name === "phone" ? 40 : 500;
+      input.required = name !== "notes";
+      label.append(span, input);
+      editForm.append(label);
+    }
+    const save = document.createElement("button");
+    save.className = "button button--secondary";
+    save.type = "submit";
+    save.textContent = "Save customer";
+    editForm.append(save);
+    editForm.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      save.disabled = true;
+      try {
+        const values = Object.fromEntries(new FormData(editForm));
+        await api(`/api/customers/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify(values),
+        });
+        await openCustomerHistory(id);
+        setFeedback("Customer details updated.");
+      } catch (err) {
+        setCustomerFeedback(err.message, true);
+        save.disabled = false;
+      }
+    });
+    detailBody.append(editForm);
 
     if (orders.length === 0) {
       const empty = document.createElement("p");
@@ -492,9 +601,9 @@ async function openCustomerHistory(id) {
       detailBody.append(list);
     }
 
-    detailDialog.showModal();
+    if (!detailDialog.open) detailDialog.showModal();
   } catch (err) {
-    setFeedback(err.message, true);
+    setCustomerFeedback(err.message, true);
   }
 }
 
@@ -524,6 +633,14 @@ filtersEl.addEventListener("click", (event) => {
   loadOrders();
 });
 
+const orderSearch = document.getElementById("orderSearch");
+let orderSearchTimer;
+orderSearch.addEventListener("input", () => {
+  activeOrderQuery = orderSearch.value.trim();
+  clearTimeout(orderSearchTimer);
+  orderSearchTimer = setTimeout(loadOrders, 150);
+});
+
 const loadTypeField = document.getElementById("loadType");
 const washMachineField = document.getElementById("washMachineField");
 const dryMachineField = document.getElementById("dryMachineField");
@@ -551,6 +668,43 @@ function updateOrderFormFields() {
   dryMachineField.classList.toggle("is-hidden", !needsDryMachine);
 }
 
+async function loadOrderAddons() {
+  try {
+    const { addons } = await api('/api/addons');
+    orderAddonsEl.replaceChildren();
+    if (addons.length === 0) {
+      const empty = document.createElement('p');
+      empty.textContent = 'No service add-ons configured.';
+      orderAddonsEl.append(empty);
+      return;
+    }
+    for (const addon of addons) {
+      const label = document.createElement('label');
+      label.className = 'addon-choice';
+      const input = document.createElement('input');
+      input.type = 'checkbox';
+      input.name = `addon_${addon.id}`;
+      input.value = addon.id;
+      input.dataset.price = Number(addon.price);
+      const text = document.createElement('span');
+      text.textContent = `${addon.name} (+${peso(addon.price)})`;
+      label.append(input, text);
+      orderAddonsEl.append(label);
+      input.addEventListener('change', updateAddonPreview);
+    }
+    updateAddonPreview();
+  } catch (err) {
+    orderAddonsEl.textContent = 'Unable to load add-ons.';
+  }
+}
+
+function updateAddonPreview() {
+  const selectedTotal = [...orderAddonsEl.querySelectorAll('input:checked')]
+    .reduce((sum, input) => sum + Number(input.dataset.price || 0), 0);
+  document.getElementById('pricePreview').textContent =
+    `Base price is calculated from the service and machine type. Selected add-ons: ${peso(selectedTotal)}.`;
+}
+
 loadTypeField.addEventListener("change", updateOrderFormFields);
 updateOrderFormFields();
 
@@ -570,7 +724,12 @@ newOrderForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   formErrors.textContent = "";
 
-  const data = Object.fromEntries(new FormData(newOrderForm));
+    const data = Object.fromEntries(new FormData(newOrderForm));
+    data.addons = [...orderAddonsEl.querySelectorAll('input:checked')]
+      .map((input) => ({ id: Number(input.value), quantity: 1 }));
+    for (const key of Object.keys(data)) {
+      if (key.startsWith('addon_')) delete data[key];
+    }
 
   const byWeight = ["wash_fold", "wash_only", "dry_only", "fold_only"].includes(
     data.load_type,
@@ -591,6 +750,7 @@ newOrderForm.addEventListener("submit", async (event) => {
     newOrderDialog.close();
     newOrderForm.reset();
     updateOrderFormFields();
+    updateAddonPreview();
 
     await loadOrders();
 
@@ -647,6 +807,7 @@ async function loadReport() {
       const row = document.createElement("tr");
       const cell = document.createElement("td");
       cell.colSpan = 3;
+      cell.className = "report-empty";
       cell.textContent = "No activity in this date range.";
       row.append(cell);
       reportDaily.append(row);
@@ -659,7 +820,7 @@ async function loadReport() {
       const salesCell = document.createElement("td");
       const collectionsCell = document.createElement("td");
 
-      dateCell.textContent = day.date;
+      dateCell.textContent = formatReportDate(day.date);
       salesCell.textContent = peso(day.sales);
       collectionsCell.textContent = peso(day.collections);
 
@@ -682,9 +843,44 @@ reportTo.value = todayForReport;
 loadReport();
 
 loadOrders();
+loadOrderAddons();
 
 const customerSearch = document.getElementById("customerSearch");
 const customersEl = document.getElementById("customers");
+const customerForm = document.getElementById("customerForm");
+const customerFeedback = document.getElementById("customerFeedback");
+
+function setCustomerFeedback(message, isError = false) {
+  customerFeedback.textContent = message;
+  customerFeedback.classList.toggle("is-error", isError);
+}
+
+customerForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const submit = customerForm.querySelector('button[type="submit"]');
+  submit.disabled = true;
+  setCustomerFeedback("");
+  try {
+    const customer = Object.fromEntries(new FormData(customerForm));
+    await api("/api/customers", {
+      method: "POST",
+      body: JSON.stringify(customer),
+    });
+    customerForm.reset();
+    customerSearch.value = "";
+    setCustomerFeedback("Customer added.");
+    await refreshCustomers();
+  } catch (err) {
+    setCustomerFeedback(
+      err.status === 409
+        ? "A customer with that phone number already exists. Search for the existing customer to edit their details."
+        : err.message,
+      true,
+    );
+  } finally {
+    submit.disabled = false;
+  }
+});
 
 async function loadCustomers(query = "") {
   const params = new URLSearchParams();
@@ -775,13 +971,163 @@ customersEl.addEventListener("click", (event) => {
   openCustomerHistory(button.dataset.customerId);
 });
 
+const machinesEl = document.getElementById("machines");
+const machineForm = document.getElementById("machineForm");
+const managedAddonsEl = document.getElementById("managedAddons");
+const addonForm = document.getElementById("addonForm");
+const managementFeedback = document.getElementById("managementFeedback");
+
+function setManagementFeedback(message, isError = false) {
+  managementFeedback.textContent = message;
+  managementFeedback.classList.toggle("is-error", isError);
+}
+
+async function refreshMachines() {
+  try {
+    const { machines } = await api("/api/machines");
+    machinesEl.innerHTML = machines.length ? `
+      <div class="machine-manage-list">
+        ${machines.map((machine) => `
+          <article class="machine-manage-card">
+            <h3>${escapeHtml(machine.name)}</h3>
+            <p class="management-status">${escapeHtml(machine.machine_type)} ${escapeHtml(machine.machine_kind)} · ${escapeHtml(machine.capacity_kg)} kg · ${escapeHtml(machine.status)}</p>
+            <form class="machine-edit-form" data-machine-id="${Number(machine.id)}">
+              <label class="field"><span>Name</span><input name="name" type="text" maxlength="120" value="${escapeHtml(machine.name)}" required /></label>
+              <label class="field"><span>Type</span><select name="machine_type"><option value="regular" ${machine.machine_type === "regular" ? "selected" : ""}>Regular</option><option value="titan" ${machine.machine_type === "titan" ? "selected" : ""}>Titan</option></select></label>
+              <label class="field"><span>Kind</span><select name="machine_kind"><option value="washer" ${machine.machine_kind === "washer" ? "selected" : ""}>Washer</option><option value="dryer" ${machine.machine_kind === "dryer" ? "selected" : ""}>Dryer</option></select></label>
+              <label class="field"><span>Capacity (kg)</span><input name="capacity_kg" type="number" min="0.1" max="100" step="0.01" value="${escapeHtml(machine.capacity_kg)}" required /></label>
+              <label class="field"><span>Availability</span><select name="status" ${machine.status === "running" ? "disabled" : ""}><option value="available" ${machine.status === "available" ? "selected" : ""}>Available</option><option value="maintenance" ${machine.status === "maintenance" ? "selected" : ""}>Maintenance</option></select></label>
+              <button class="button button--secondary" type="submit">Save machine</button>
+            </form>
+          </article>
+        `).join("")}
+      </div>` : '<p class="empty">No machines have been added.</p>';
+  } catch (err) {
+    machinesEl.innerHTML = '<p class="empty">Unable to load machines.</p>';
+    setManagementFeedback(err.message, true);
+  }
+}
+
+machineForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = machineForm.querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    const fields = Object.fromEntries(new FormData(machineForm));
+    fields.capacity_kg = Number(fields.capacity_kg);
+    await api("/api/machines", { method: "POST", body: JSON.stringify(fields) });
+    machineForm.reset();
+    setManagementFeedback("Machine added.");
+    await refreshMachines();
+  } catch (err) {
+    setManagementFeedback(err.message, true);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+machinesEl.addEventListener("submit", async (event) => {
+  const form = event.target.closest(".machine-edit-form");
+  if (!form) return;
+  event.preventDefault();
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    const fields = Object.fromEntries(new FormData(form));
+    fields.capacity_kg = Number(fields.capacity_kg);
+    await api(`/api/machines/${form.dataset.machineId}`, {
+      method: "PATCH", body: JSON.stringify(fields),
+    });
+    setManagementFeedback("Machine updated.");
+    await refreshMachines();
+  } catch (err) {
+    setManagementFeedback(err.message, true);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+async function refreshManagedAddons() {
+  try {
+    const { addons } = await api("/api/addons?include_inactive=true");
+    managedAddonsEl.innerHTML = addons.length ? `
+      <div class="addon-manage-list">
+        ${addons.map((addon) => `
+          <article class="addon-manage-card">
+            <h3>${escapeHtml(addon.name)}</h3>
+            <form class="addon-edit-form" data-addon-id="${Number(addon.id)}">
+              <label class="field"><span>Name</span><input name="name" type="text" maxlength="120" value="${escapeHtml(addon.name)}" required /></label>
+              <label class="field"><span>Price (₱)</span><input name="price" type="number" min="0" step="0.01" value="${escapeHtml(addon.price)}" required /></label>
+              <label class="addon-choice"><input name="is_active" type="checkbox" ${addon.is_active ? "checked" : ""} /><span>Active for new orders</span></label>
+              <button class="button button--secondary" type="submit">Save add-on</button>
+            </form>
+          </article>
+        `).join("")}
+      </div>` : '<p class="empty">No add-ons configured.</p>';
+  } catch (err) {
+    managedAddonsEl.innerHTML = '<p class="empty">Unable to load add-ons.</p>';
+    setManagementFeedback(err.message, true);
+  }
+}
+
+addonForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const button = addonForm.querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    const fields = Object.fromEntries(new FormData(addonForm));
+    fields.price = Number(fields.price);
+    await api("/api/addons", { method: "POST", body: JSON.stringify(fields) });
+    addonForm.reset();
+    setManagementFeedback("Add-on added.");
+    await refreshManagedAddons();
+  } catch (err) {
+    setManagementFeedback(err.message, true);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+managedAddonsEl.addEventListener("submit", async (event) => {
+  const form = event.target.closest(".addon-edit-form");
+  if (!form) return;
+  event.preventDefault();
+  const button = form.querySelector('button[type="submit"]');
+  button.disabled = true;
+  try {
+    const fields = Object.fromEntries(new FormData(form));
+    fields.price = Number(fields.price);
+    fields.is_active = form.elements.is_active.checked;
+    await api(`/api/addons/${form.dataset.addonId}`, {
+      method: "PATCH", body: JSON.stringify(fields),
+    });
+    setManagementFeedback("Add-on updated. Existing order prices are unchanged.");
+    await refreshManagedAddons();
+  } catch (err) {
+    setManagementFeedback(err.message, true);
+  } finally {
+    button.disabled = false;
+  }
+});
+
+refreshMachines();
+refreshManagedAddons();
+
 const productForm = document.getElementById("productForm");
 const productsEl = document.getElementById("products");
+const productSearch = document.getElementById("productSearch");
+const lowStockOnly = document.getElementById("lowStockOnly");
 
 async function loadProducts() {
-  const data = await api("/api/products");
+  const params = new URLSearchParams();
+  if (productSearch.value.trim()) params.set("q", productSearch.value.trim());
+  if (lowStockOnly.checked) params.set("low_stock", "true");
+  const data = await api(`/api/products?${params.toString()}`);
   return data.products;
 }
+
+productSearch.addEventListener("input", () => refreshProducts());
+lowStockOnly.addEventListener("change", () => refreshProducts());
 
 function renderProducts(products) {
   if (!products.length) {
@@ -926,14 +1272,14 @@ productsEl.addEventListener("submit", async (event) => {
         body: JSON.stringify({ movement_type, quantity, notes }),
       });
 
-      setFeedback(
+      setInventoryFeedback(
         movement_type === "stock_in"
           ? "Stock-in recorded successfully."
           : "Usage recorded successfully.",
       );
       await refreshProducts();
     } catch (err) {
-      setFeedback(err.message, true);
+      setInventoryFeedback(err.message, true);
     }
 
     return;
@@ -948,10 +1294,10 @@ productsEl.addEventListener("submit", async (event) => {
       body: JSON.stringify({ stock_quantity: stock }),
     });
 
-    setFeedback("Stock adjusted successfully.");
+    setInventoryFeedback("Stock adjusted successfully.");
     await refreshProducts();
   } catch (err) {
-    setFeedback(err.message, true);
+    setInventoryFeedback(err.message, true);
   }
 });
 
@@ -1110,10 +1456,10 @@ productForm.addEventListener("submit", async (event) => {
     document.getElementById("productStock").value = "0";
     document.getElementById("productThreshold").value = "5";
 
-    setFeedback("Product added successfully.");
+    setInventoryFeedback("Product added successfully.");
     await refreshProducts();
   } catch (err) {
-    setFeedback(err.message, true);
+    setInventoryFeedback(err.message, true);
   }
 });
 

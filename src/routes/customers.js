@@ -6,6 +6,7 @@ const { HttpError, asyncHandler } = require("../middleware/httpError");
 const {
   parseId,
   validateNewCustomer,
+  validateCustomerUpdate,
 } = require("../validators/orderValidators");
 
 const router = express.Router();
@@ -52,7 +53,7 @@ router.get(
     const id = parseId(req.params.id, "customer id");
 
     const customer = await db.query(
-      "SELECT id, name, phone, notes, created_at FROM customers WHERE id = $1",
+      "SELECT id, name, phone, notes, created_at, updated_at FROM customers WHERE id = $1",
       [id],
     );
     if (customer.rows.length === 0) {
@@ -60,12 +61,26 @@ router.get(
     }
 
     const orders = await db.query(
-      `SELECT id, load_type, weight_kg, item_count, price, status, created_at
-       FROM orders WHERE customer_id = $1 ORDER BY created_at DESC`,
+      `SELECT o.id, o.load_type, o.weight_kg, o.item_count, o.price,
+              o.status, o.created_at,
+              COALESCE(pay.paid_amount, 0) AS paid_amount,
+              GREATEST(o.price - COALESCE(pay.paid_amount, 0), 0) AS outstanding_amount
+       FROM orders o
+       LEFT JOIN LATERAL (
+         SELECT SUM(amount) AS paid_amount FROM payments WHERE order_id = o.id
+       ) pay ON true
+       WHERE o.customer_id = $1
+       ORDER BY o.created_at DESC`,
       [id],
     );
 
-    res.json({ customer: customer.rows[0], orders: orders.rows });
+    const summary = orders.rows.reduce((total, order) => ({
+      spending: total.spending + Number(order.price),
+      paid: total.paid + Number(order.paid_amount),
+      outstanding: total.outstanding + Number(order.outstanding_amount),
+    }), { spending: 0, paid: 0, outstanding: 0 });
+
+    res.json({ customer: customer.rows[0], orders: orders.rows, summary });
   }),
 );
 
@@ -78,7 +93,7 @@ router.post(
     const { rows } = await db.query(
       `INSERT INTO customers (name, phone, notes)
        VALUES ($1, $2, $3)
-       RETURNING id, name, phone, notes, created_at`,
+       RETURNING id, name, phone, notes, created_at, updated_at`,
       [name, phone, notes],
     );
 
@@ -86,6 +101,35 @@ router.post(
       .status(201)
       .location(`/api/customers/${rows[0].id}`)
       .json({ customer: rows[0] });
+  }),
+);
+
+/** PATCH /api/customers/:id - edit customer contact details without touching orders. */
+router.patch(
+  '/:id',
+  asyncHandler(async (req, res) => {
+    const id = parseId(req.params.id, 'customer id');
+    const updates = validateCustomerUpdate(req.body);
+    const { rows } = await db.query(
+      `UPDATE customers
+       SET name = CASE WHEN $2 THEN $3 ELSE name END,
+           phone = CASE WHEN $4 THEN $5 ELSE phone END,
+           notes = CASE WHEN $6 THEN $7 ELSE notes END,
+           updated_at = now()
+       WHERE id = $1
+       RETURNING id, name, phone, notes, created_at, updated_at`,
+      [
+        id,
+        Object.hasOwn(updates, 'name'), updates.name ?? null,
+        Object.hasOwn(updates, 'phone'), updates.phone ?? null,
+        Object.hasOwn(updates, 'notes'), updates.notes ?? null,
+      ],
+    );
+
+    if (rows.length === 0) {
+      throw new HttpError(404, `No customer with id ${id}`);
+    }
+    res.json({ customer: rows[0] });
   }),
 );
 

@@ -1,13 +1,14 @@
 {
   "name": "laundrylog",
   "version": "0.1.0",
-  "description": "Order tracking for a small laundry shop: log a drop-off and follow it from received to picked up.",
+  "description": "Laundry shop management: orders, customers, machines, inventory, payments and reporting.",
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
     "dev": "node --watch src/server.js",
-    "db:setup": "psql \"$DATABASE_URL\" -f db/schema.sql",
-    "db:seed": "psql \"$DATABASE_URL\" -f db/seed.sql",
+    "migrate": "node db/run-migrations.js",
+    "seed": "node db/run-seed.js",
+    "setup": "npm run migrate && npm run seed",
     "check": "node scripts/check.js",
     "test": "node --test"
   },
