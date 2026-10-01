@@ -13,15 +13,9 @@ const MACHINE_CAPACITY_KG = {
   titan: 10,
 };
 
-function calculateServicePrice(service, machineType, loadCount) {
-  const count = Number(loadCount);
-
-  if (!Number.isInteger(count) || count < 1) {
-    throw new Error('loadCount must be a positive whole number');
-  }
-
+function calculateServicePrice(service, machineType) {
   if (service === 'fold') {
-    return PRICES.folding * count;
+    return PRICES.folding;
   }
 
   if (!['wash', 'dry'].includes(service)) {
@@ -32,7 +26,9 @@ function calculateServicePrice(service, machineType, loadCount) {
     throw new Error('machineType must be regular or titan');
   }
 
-  return PRICES[`${machineType}_${service}`] * count;
+  // Capacity and machine cycles affect scheduling only. The selected service
+  // has one flat base price per order.
+  return PRICES[`${machineType}_${service}`];
 }
 
 function calculateLoadCount(weightKg, machineType) {
@@ -65,31 +61,31 @@ function calculateOrderPrice({
   let total = 0;
 
   if (loadType === 'wash_fold') {
-    const washLoads = calculateLoadCount(weight, washMachineType);
-    const dryLoads = calculateLoadCount(weight, dryMachineType);
+    calculateLoadCount(weight, washMachineType);
+    calculateLoadCount(weight, dryMachineType);
 
-    total += calculateServicePrice('wash', washMachineType, washLoads);
-    total += calculateServicePrice('dry', dryMachineType, dryLoads);
-
-    // Folding follows the number of wash loads.
-    total += calculateServicePrice('fold', 'regular', washLoads);
+    total += calculateServicePrice('wash', washMachineType);
+    total += calculateServicePrice('dry', dryMachineType);
+    // The selected Wash & Fold base service includes one folding service fee;
+    // load splitting never multiplies any service charge.
+    total += calculateServicePrice('fold', 'regular');
 
     return total;
   }
 
   if (loadType === 'wash_only') {
-    const loads = calculateLoadCount(weight, washMachineType);
-    return calculateServicePrice('wash', washMachineType, loads);
+    calculateLoadCount(weight, washMachineType);
+    return calculateServicePrice('wash', washMachineType);
   }
 
   if (loadType === 'dry_only') {
-    const loads = calculateLoadCount(weight, dryMachineType);
-    return calculateServicePrice('dry', dryMachineType, loads);
+    calculateLoadCount(weight, dryMachineType);
+    return calculateServicePrice('dry', dryMachineType);
   }
 
   if (loadType === 'fold_only') {
-    const loads = calculateLoadCount(weight, 'regular');
-    return calculateServicePrice('fold', 'regular', loads);
+    calculateLoadCount(weight, 'regular');
+    return calculateServicePrice('fold', 'regular');
   }
 
   throw new Error(`Unsupported load type: ${loadType}`);

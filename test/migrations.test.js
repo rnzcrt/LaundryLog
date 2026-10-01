@@ -90,6 +90,20 @@ test('migration transaction wrappers are removed so history shares the runner tr
   assert.equal(migrationSql('\nBEGIN;\nSELECT 1;\nCOMMIT;\n'), '\nSELECT 1;\n');
 });
 
+test('completion catalog migration upserts catalog entries and retires only generic test entries', () => {
+  const directory = path.join(__dirname, '..', 'db', 'migrations');
+  const migration = fs.readFileSync(path.join(directory, '011_completion_addon_catalog.sql'), 'utf8');
+  assert.deepEqual(listMigrations(directory).at(-1).name, '011_completion_addon_catalog.sql');
+  assert.match(migration, /ON CONFLICT \(name\) DO UPDATE/);
+  assert.match(migration, /\('Folding', 20\.00, true\)/);
+  assert.match(migration, /\('Ariel — Sunrise Fresh', 10\.00, true\)/);
+  assert.match(migration, /\('Zonrox — Colorsafe', 5\.00, true\)/);
+  assert.match(migration, /WHERE name ~ '\^Completion add-on \[0-9\]\+\$'/);
+  assert.match(migration, /SET is_active = false/);
+  assert.doesNotMatch(migration, /DELETE FROM\s+(service_addons|order_addons)/i);
+  assert.doesNotMatch(migration, /UPDATE\s+(order_addons|orders|payments)/i);
+});
+
 test('migration history prevents an already-applied migration from running twice', async () => {
   const directory = makeDirectory({ '001_first.sql': 'SELECT migration_one;' });
   const client = fakeClient();

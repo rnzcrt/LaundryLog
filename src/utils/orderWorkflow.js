@@ -6,7 +6,7 @@ const MACHINE_SERVICES = {
 };
 
 function requiredMachineKind(loadType, destination) {
-  if (destination === 'waiting' && MACHINE_SERVICES.washer.has(loadType)) return 'washer';
+  if (destination === 'washing' && MACHINE_SERVICES.washer.has(loadType)) return 'washer';
   if (destination === 'drying' && MACHINE_SERVICES.dryer.has(loadType)) return 'dryer';
   return null;
 }
@@ -55,6 +55,9 @@ function validateCompletionChoices(body) {
   if (!Array.isArray(body.addons)) throw new Error('addons must be an array');
   if (decision === 'skip' && body.addons.length) {
     throw new Error('Skipped add-ons cannot include selected services');
+  }
+  if (decision === 'add' && body.addons.length === 0) {
+    throw new Error('Select at least one add-on or explicitly skip them');
   }
   const seen = new Set();
   return body.addons.map((addon, index) => {

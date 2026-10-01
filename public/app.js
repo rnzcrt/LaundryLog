@@ -721,7 +721,12 @@ async function collectWorkflowChoices(order, destination, details) {
     destination,
   );
 
-  if (machineKind) {
+  const existingQueuedWeight = machineKind === "washer" && destination === "washing"
+    ? (details.loads || [])
+        .filter((load) => load.machine_kind === machineKind && load.status === "queued")
+        .reduce((sum, load) => sum + Math.round(Number(load.weight_kg) * 100), 0)
+    : 0;
+  if (machineKind && existingQueuedWeight !== Math.round(Number(order.weight_kg) * 100)) {
     const { machines } = await api("/api/machines");
     const available = machines
       .filter(
@@ -746,17 +751,21 @@ async function collectWorkflowChoices(order, destination, details) {
     }
     for (const machine of available) {
       const label = document.createElement("label");
-      label.className = "workflow-choice";
+      label.className = "workflow-choice workflow-machine-choice";
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.value = machine.id;
       checkbox.setAttribute("aria-label", `Assign ${machine.name}`);
-      const name = document.createElement("span");
+      const copy = document.createElement("span");
+      copy.className = "workflow-machine-copy";
+      const name = document.createElement("strong");
+      name.className = "workflow-machine-name";
       name.textContent = machine.name;
       const capacity = document.createElement("small");
-      capacity.textContent = `${Number(machine.capacity_kg)} kg · ${machine.machine_type}`;
-      name.append(capacity);
-      label.append(checkbox, name);
+      capacity.className = "workflow-machine-details";
+      capacity.textContent = window.LaundryLogWorkflow.machineDetailsLabel(machine);
+      copy.append(name, capacity);
+      label.append(checkbox, copy);
       list.append(label);
       options.push({ machine, checkbox });
     }
@@ -798,71 +807,142 @@ async function collectWorkflowChoices(order, destination, details) {
         .map((addon) => Number(addon.addon_id))
         .filter(Number.isInteger),
     );
-    const choices = addons.filter(
-      (addon) => !alreadyAdded.has(Number(addon.id)),
+    const catalog = window.LaundryLogWorkflow.partitionCompletionAddons(
+      addons,
+      [...alreadyAdded],
     );
+    const choices = [...catalog.folding, ...catalog.products];
     const content = document.createElement("div");
-    const list = document.createElement("div");
-    list.className = "workflow-addon-list";
+    const groups = document.createElement("div");
+    groups.className = "workflow-addon-groups";
+    const serviceSection = document.createElement("section");
+    serviceSection.className = "workflow-addon-group workflow-addon-group--service";
+    const serviceTitle = document.createElement("h3");
+    serviceTitle.textContent = "Additional service";
+    const serviceList = document.createElement("div");
+    serviceList.className = "workflow-addon-list";
+    serviceSection.append(serviceTitle, serviceList);
+    const productSection = document.createElement("section");
+    productSection.className = "workflow-addon-group workflow-addon-group--products";
+    const productTitle = document.createElement("h3");
+    productTitle.textContent = "Laundry products";
+    const productList = document.createElement("div");
+    productList.className = "workflow-addon-list";
+    productSection.append(productTitle, productList);
+    groups.append(serviceSection, productSection);
     const inputs = [];
     if (!choices.length) {
       const empty = document.createElement("p");
       empty.className = "empty";
-      empty.textContent = addons.length
-        ? "All available add-ons are already included on this order."
-        : "There are no active add-ons. Confirm to complete the order without them.";
-      list.append(empty);
+      empty.textContent = catalog.alreadyIncluded.length
+        ? "All active add-ons are already included on this order. Skip add-ons to complete, or cancel."
+        : "No active add-ons are configured. Skip add-ons to complete, or cancel.";
+      groups.append(empty);
     }
     for (const addon of choices) {
+      const isService = addon.name === "Folding";
+      const separator = addon.name.indexOf(" — ");
+      const brand = !isService && separator >= 0 ? addon.name.slice(0, separator) : "";
+      const productName = isService
+        ? "Additional Folding (extra service)"
+        : separator >= 0 ? addon.name.slice(separator + 3) : addon.name;
       const label = document.createElement("label");
-      label.className = "workflow-choice";
+      label.className = `workflow-choice${isService ? " workflow-choice--service" : ""}`;
       const checkbox = document.createElement("input");
       checkbox.type = "checkbox";
       checkbox.value = addon.id;
-      checkbox.setAttribute("aria-label", `Add ${addon.name}`);
+      checkbox.setAttribute("aria-label", `Add ${productName}`);
       const text = document.createElement("span");
-      text.textContent = addon.name;
+      text.className = "workflow-choice__description";
+      if (brand) {
+        const brandName = document.createElement("small");
+        brandName.className = "workflow-choice__brand";
+        brandName.textContent = brand;
+        text.append(brandName);
+      }
+      const name = document.createElement("strong");
+      name.textContent = productName;
       const price = document.createElement("small");
-      price.textContent = `${peso(addon.price)} each`;
-      text.append(price);
+      price.textContent = isService
+        ? `${peso(addon.price)} per order`
+        : `${peso(addon.price)} each`;
+      text.append(name, price);
+      const controls = document.createElement("span");
+      controls.className = "workflow-choice__controls";
       const quantity = document.createElement("input");
       quantity.type = "number";
       quantity.min = "1";
       quantity.max = "100";
       quantity.step = "1";
       quantity.value = "1";
+      quantity.hidden = isService;
       quantity.disabled = true;
       quantity.setAttribute("aria-label", `Quantity for ${addon.name}`);
+      const lineTotal = document.createElement("strong");
+      lineTotal.className = "workflow-line-total";
+      lineTotal.textContent = peso(0);
+      controls.append(quantity, lineTotal);
       checkbox.addEventListener("change", () => {
-        quantity.disabled = !checkbox.checked;
+        quantity.disabled = !checkbox.checked || isService;
       });
       quantity.addEventListener("input", () => updateSubtotal());
-      const input = { addon, checkbox, quantity };
+      const input = { addon, checkbox, quantity, lineTotal, isService };
       checkbox.addEventListener("change", () => updateSubtotal());
       inputs.push(input);
-      label.append(checkbox, text, quantity);
-      list.append(label);
+      label.append(checkbox, text, controls);
+      (isService ? serviceList : productList).append(label);
+    }
+    if (!serviceList.children.length) serviceSection.hidden = true;
+    if (!productList.children.length) productSection.hidden = true;
+    const alreadySelected = catalog.alreadyIncluded;
+    if (alreadySelected.length) {
+      const included = document.createElement("p");
+      included.className = "workflow-included-addons";
+      included.textContent = `Already included: ${alreadySelected.map((addon) => addon.name).join(", ")}.`;
+      groups.prepend(included);
     }
     const subtotal = document.createElement("p");
-    subtotal.className = "workflow-summary";
+    subtotal.className = "workflow-summary workflow-summary--charge";
     function updateSubtotal() {
       const totalCents = window.LaundryLogWorkflow.addonSubtotalCents(
         inputs
           .filter((item) => item.checkbox.checked)
           .map((item) => ({
             price: item.addon.price,
-            quantity: item.quantity.value,
+            quantity: item.isService ? 1 : item.quantity.value,
           })),
       );
       if (totalCents === null) {
         subtotal.textContent =
           "Enter a whole-number quantity from 1 to 100 for each selected add-on.";
+        for (const item of inputs) {
+          const quantity = item.isService ? 1 : Number(item.quantity.value);
+          item.lineTotal.textContent = item.checkbox.checked && Number.isInteger(quantity) && quantity >= 1 && quantity <= 100
+            ? peso((Math.round(Number(item.addon.price) * 100) * quantity) / 100)
+            : item.checkbox.checked ? "—" : peso(0);
+        }
         return;
       }
-      subtotal.textContent = `Add-on subtotal: ${peso(totalCents / 100)} · Current order total: ${peso(order.price)}${totalCents ? ` · New total: ${peso(Number(order.price) + totalCents / 100)}` : ""}`;
+      for (const item of inputs) {
+        const lineCents = item.checkbox.checked
+          ? Math.round(Number(item.addon.price) * 100) * (item.isService ? 1 : Number(item.quantity.value))
+          : 0;
+        item.lineTotal.textContent = peso(lineCents / 100);
+      }
+      const totals = window.LaundryLogWorkflow.completionTotals(
+        order.price,
+        order.paid_amount,
+        totalCents,
+      );
+      subtotal.textContent = totals
+        ? `Add-on subtotal: ${peso(totals.addonSubtotalCents / 100)} · Current order total: ${peso(totals.currentTotalCents / 100)} · Updated order total: ${peso(totals.updatedTotalCents / 100)} · Remaining balance: ${peso(totals.remainingBalanceCents / 100)}`
+        : "Unable to calculate the updated order balance. Review the order totals and try again.";
     }
     updateSubtotal();
-    content.append(list, subtotal);
+    const additionalCharge = document.createElement("p");
+    additionalCharge.className = "workflow-charge-note";
+    additionalCharge.textContent = "Only checked services and products will be added to this order.";
+    content.append(groups, subtotal, additionalCharge);
     const chosen = await showWorkflowPrompt({
       titleText: "Optional services before completion",
       description: `Choose add-ons for order #${order.id}, or explicitly skip. Added charges update the balance; existing payments remain unchanged.`,
@@ -872,7 +952,8 @@ async function collectWorkflowChoices(order, destination, details) {
         { decision: "add", label: "Confirm and complete", primary: true },
       ],
       canSubmit: (decision) => {
-        if (decision === "skip" || choices.length === 0) return true;
+        if (decision === "skip") return true;
+        if (choices.length === 0 || !inputs.some((item) => item.checkbox.checked)) return false;
         return inputs.every(
           (item) =>
             !item.checkbox.checked ||
@@ -881,18 +962,14 @@ async function collectWorkflowChoices(order, destination, details) {
               Number(item.quantity.value) <= 100),
         );
       },
-      onSubmit: (decision) => ({
-        addon_decision: decision,
-        addons:
-          decision === "skip"
-            ? []
-            : inputs
-                .filter((item) => item.checkbox.checked)
-                .map((item) => ({
-                  id: Number(item.addon.id),
-                  quantity: Number(item.quantity.value),
-                })),
-      }),
+      onSubmit: (decision) => window.LaundryLogWorkflow.buildAddonSelection(
+        decision,
+        inputs.filter((item) => item.checkbox.checked).map((item) => ({
+          id: item.addon.id,
+          quantity: item.quantity.value,
+          isService: item.isService,
+        })),
+      ),
     });
     if (!chosen) return null;
     payload = { ...payload, ...chosen };
@@ -982,17 +1059,53 @@ async function loadOrderAddons() {
     }
     for (const addon of addons) {
       const label = document.createElement("label");
-      label.className = "addon-choice";
+      label.className = `addon-choice${addon.name === "Folding" ? " addon-choice--service" : ""}`;
       const input = document.createElement("input");
       input.type = "checkbox";
       input.name = `addon_${addon.id}`;
       input.value = addon.id;
-      input.dataset.price = Number(addon.price);
+      input.dataset.priceCents = String(Math.round(Number(addon.price) * 100));
       const text = document.createElement("span");
-      text.textContent = `${addon.name} (+${peso(addon.price)})`;
-      label.append(input, text);
+      const separator = addon.name.indexOf(" — ");
+      if (addon.name !== "Folding" && separator >= 0) {
+        const brand = document.createElement("small");
+        brand.className = "addon-choice__brand";
+        brand.textContent = addon.name.slice(0, separator);
+        const product = document.createElement("strong");
+        product.textContent = addon.name.slice(separator + 3);
+        text.append(brand, product);
+      } else {
+        text.textContent = addon.name;
+      }
+      const unitPrice = document.createElement("small");
+      unitPrice.className = "addon-choice__unit-price";
+      unitPrice.textContent = addon.name === "Folding"
+        ? `${peso(addon.price)} per order`
+        : `${peso(addon.price)} each`;
+      text.append(unitPrice);
+      const quantity = document.createElement("input");
+      quantity.type = "number";
+      quantity.className = "addon-choice__quantity";
+      quantity.min = "1";
+      quantity.max = "100";
+      quantity.step = "1";
+      quantity.value = "1";
+      quantity.disabled = true;
+      quantity.hidden = addon.name === "Folding";
+      quantity.required = false;
+      quantity.setAttribute("aria-label", `Quantity for ${addon.name}`);
+      const lineTotal = document.createElement("strong");
+      lineTotal.className = "addon-choice__line-total";
+      lineTotal.textContent = peso(0);
+      input.dataset.perOrder = String(addon.name === "Folding");
+      input.addEventListener("change", () => {
+        quantity.disabled = !input.checked || input.dataset.perOrder === "true";
+        quantity.required = input.checked && input.dataset.perOrder !== "true";
+        updateAddonPreview();
+      });
+      quantity.addEventListener("input", updateAddonPreview);
+      label.append(input, text, quantity, lineTotal);
       orderAddonsEl.append(label);
-      input.addEventListener("change", updateAddonPreview);
     }
     updateAddonPreview();
   } catch (err) {
@@ -1001,11 +1114,25 @@ async function loadOrderAddons() {
 }
 
 function updateAddonPreview() {
-  const selectedTotal = [
-    ...orderAddonsEl.querySelectorAll("input:checked"),
-  ].reduce((sum, input) => sum + Number(input.dataset.price || 0), 0);
-  document.getElementById("pricePreview").textContent =
-    `Base price is calculated from the service and machine type. Selected add-ons: ${peso(selectedTotal)}.`;
+  const selected = [...orderAddonsEl.querySelectorAll("input[type=checkbox]:checked")];
+  const entries = selected.map((input) => ({
+    price: Number(input.dataset.priceCents) / 100,
+    quantity: input.dataset.perOrder === "true"
+      ? 1
+      : input.closest(".addon-choice").querySelector("input[type=number]").value,
+  }));
+  const totalCents = window.LaundryLogWorkflow.addonSubtotalCents(entries);
+  for (const input of orderAddonsEl.querySelectorAll("input[type=checkbox]")) {
+    const quantity = input.closest(".addon-choice").querySelector("input[type=number]");
+    const lineTotal = input.closest(".addon-choice").querySelector(".addon-choice__line-total");
+    const count = input.dataset.perOrder === "true" ? 1 : Number(quantity.value);
+    const validQuantity = Number.isInteger(count) && count >= 1 && count <= 100;
+    const cents = input.checked && validQuantity ? Number(input.dataset.priceCents) * count : 0;
+    lineTotal.textContent = input.checked && !validQuantity ? "—" : peso(cents / 100);
+  }
+  document.getElementById("pricePreview").textContent = totalCents === null
+    ? "Enter a whole-number quantity from 1 to 100 for each selected product."
+    : `Base service price is unchanged by extra machine cycles. Selected add-ons: ${peso(totalCents / 100)}.`;
 }
 
 loadTypeField.addEventListener("change", updateOrderFormFields);
@@ -1028,9 +1155,12 @@ newOrderForm.addEventListener("submit", async (event) => {
   formErrors.textContent = "";
 
   const data = Object.fromEntries(new FormData(newOrderForm));
-  data.addons = [...orderAddonsEl.querySelectorAll("input:checked")].map(
-    (input) => ({ id: Number(input.value), quantity: 1 }),
-  );
+  data.addons = [...orderAddonsEl.querySelectorAll("input[type=checkbox]:checked")].map((input) => ({
+    id: Number(input.value),
+    quantity: input.dataset.perOrder === "true"
+      ? 1
+      : Number(input.closest(".addon-choice").querySelector("input[type=number]").value),
+  }));
   for (const key of Object.keys(data)) {
     if (key.startsWith("addon_")) delete data[key];
   }
@@ -1440,6 +1570,35 @@ const productForm = document.getElementById("productForm");
 const productsEl = document.getElementById("products");
 const productSearch = document.getElementById("productSearch");
 const lowStockOnly = document.getElementById("lowStockOnly");
+const productBrand = document.getElementById("productBrand");
+const productSelection = document.getElementById("productSelection");
+const INVENTORY_PRODUCTS = {
+  Ariel: ["Sunrise Fresh"],
+  Downy: ["Antibac", "Sunrise"],
+  Surf: ["Fabcon Sunbloom", "Liquid Detergent Rose Fresh"],
+  Tide: ["Garden Bloom"],
+  Champion: ["Original"],
+  Zonrox: ["Colorsafe"],
+};
+
+productBrand.addEventListener("change", () => {
+  const products = INVENTORY_PRODUCTS[productBrand.value] || [];
+  productSelection.replaceChildren();
+  const placeholder = document.createElement("option");
+  placeholder.value = "";
+  placeholder.textContent = products.length ? "Select a product" : "Select a brand first";
+  placeholder.disabled = true;
+  placeholder.selected = true;
+  productSelection.append(placeholder);
+
+  for (const name of products) {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    productSelection.append(option);
+  }
+  productSelection.disabled = products.length === 0;
+});
 
 async function loadProducts() {
   const params = new URLSearchParams();
@@ -1761,7 +1920,8 @@ productForm.addEventListener("submit", async (event) => {
   event.preventDefault();
 
   const product = {
-    name: document.getElementById("productName").value.trim(),
+    brand: productBrand.value,
+    product: productSelection.value,
     unit: document.getElementById("productUnit").value.trim(),
     stock_quantity: Number(document.getElementById("productStock").value),
     low_stock_threshold: Number(
@@ -1776,6 +1936,8 @@ productForm.addEventListener("submit", async (event) => {
     });
 
     productForm.reset();
+    productSelection.replaceChildren(new Option("Select a brand first", ""));
+    productSelection.disabled = true;
     document.getElementById("productStock").value = "0";
     document.getElementById("productThreshold").value = "5";
 

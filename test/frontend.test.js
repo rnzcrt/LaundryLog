@@ -33,7 +33,7 @@ function makeTabDocument() {
   tabs[0].setAttribute('aria-selected', 'true');
   const panels = names.map((name) => new FakeElement({ panel: name }));
   const newOrderButton = new FakeElement();
-  const formState = { productName: 'unsaved detergent', search: 'softener', lowStockOnly: true };
+  const formState = { productBrand: 'Ariel', product: 'Sunrise Fresh', search: 'softener', lowStockOnly: true };
 
   return {
     tabs,
@@ -75,21 +75,31 @@ test('main tabs switch panels, update accessibility state, and preserve inventor
   assert.equal(ui.tabs[2].tabIndex, 0);
   assert.equal(ui.newOrderButton.hidden, true);
   assert.deepEqual(ui.formState, {
-    productName: 'unsaved detergent',
+    productBrand: 'Ariel',
+    product: 'Sunrise Fresh',
     search: 'softener',
     lowStockOnly: true,
   });
 });
 
-test('workflow helpers request only the machines required by the service stage', () => {
-  assert.equal(workflow.requiredMachineKind('wash_fold', 'waiting'), 'washer');
-  assert.equal(workflow.requiredMachineKind('wash_only', 'waiting'), 'washer');
+test('workflow helpers request machines on the stage that starts each service', () => {
+  assert.equal(workflow.requiredMachineKind('wash_fold', 'waiting'), null);
+  assert.equal(workflow.requiredMachineKind('wash_only', 'waiting'), null);
+  assert.equal(workflow.requiredMachineKind('wash_fold', 'washing'), 'washer');
+  assert.equal(workflow.requiredMachineKind('wash_only', 'washing'), 'washer');
   assert.equal(workflow.requiredMachineKind('wash_fold', 'drying'), 'dryer');
   assert.equal(workflow.requiredMachineKind('dry_only', 'drying'), 'dryer');
-  assert.equal(workflow.requiredMachineKind('dry_only', 'waiting'), null);
+  assert.equal(workflow.requiredMachineKind('dry_only', 'washing'), null);
   assert.equal(workflow.requiredMachineKind('wash_only', 'drying'), null);
   assert.equal(workflow.requiredMachineKind('fold_only', 'waiting'), null);
   assert.equal(workflow.requiredMachineKind('fold_only', 'drying'), null);
+});
+
+test('washer and dryer options format their capacity and machine type consistently', () => {
+  assert.equal(workflow.machineDetailsLabel({ capacity_kg: 8, machine_type: 'regular' }),
+    'Capacity: 8 kg · Type: Regular');
+  assert.equal(workflow.machineDetailsLabel({ capacity_kg: 10, machine_type: 'titan' }),
+    'Capacity: 10 kg · Type: Titan');
 });
 
 test('workflow load plan uses capacity splits and exact hundredth-kg totals', () => {
@@ -116,6 +126,60 @@ test('workflow add-on subtotal uses integer cents and rejects invalid quantities
   assert.equal(workflow.addonSubtotalCents([
     { price: 1, quantity: 0 }, { price: 1, quantity: 1 },
   ]), null);
+});
+
+test('completion preview recalculates updated total and remaining balance in cents', () => {
+  assert.deepEqual(workflow.completionTotals(180, 50, 2500), {
+    currentTotalCents: 18000,
+    addonSubtotalCents: 2500,
+    updatedTotalCents: 20500,
+    remainingBalanceCents: 15500,
+  });
+  assert.equal(workflow.completionTotals(25, 30, 0).remainingBalanceCents, 0);
+  assert.equal(workflow.completionTotals('invalid', 0, 100), null);
+});
+
+test('completion catalog includes Folding and separates products for every service type', () => {
+  const expected = [
+    ['Folding', 20],
+    ['Ariel — Sunrise Fresh', 10],
+    ['Downy — Antibac', 10],
+    ['Downy — Sunrise', 10],
+    ['Surf — Fabcon Sunbloom', 10],
+    ['Surf — Liquid Detergent Rose Fresh', 10],
+    ['Tide — Garden Bloom', 10],
+    ['Champion — Original', 10],
+    ['Zonrox — Colorsafe', 5],
+  ];
+  const addons = expected.map(([name, price], index) => ({ id: index + 1, name, price }));
+  addons.push(
+    { id: 100, name: 'Completion add-on 1790844211705', price: 12.34 },
+    { id: 101, name: 'Completion add-on 1790846241322', price: 12.34 },
+  );
+  for (const loadType of ['wash_fold', 'wash_only', 'dry_only', 'fold_only']) {
+    const catalog = workflow.partitionCompletionAddons(addons);
+    assert.deepEqual(catalog.folding.map((addon) => addon.name), ['Folding'], loadType);
+    assert.deepEqual(catalog.products.map((addon) => addon.name), expected.slice(1).map(([name]) => name), loadType);
+    assert.deepEqual([...catalog.folding, ...catalog.products].map(({ name, price }) => [name, price]), expected, loadType);
+  }
+  const previouslySelected = workflow.partitionCompletionAddons(addons, [1]);
+  assert.equal(previouslySelected.folding.length, 0);
+  assert.equal(previouslySelected.alreadyIncluded[0].name, 'Folding');
+  assert.ok(![...previouslySelected.folding, ...previouslySelected.products]
+    .some((addon) => addon.name.startsWith('Completion add-on ')));
+});
+
+test('completion selection confirms only checked add-ons or explicitly skips all', () => {
+  assert.deepEqual(workflow.buildAddonSelection('add', [
+    { id: 1, quantity: 9, isService: true },
+    { id: 2, quantity: '3', isService: false },
+  ]), {
+    addon_decision: 'add',
+    addons: [{ id: 1, quantity: 1 }, { id: 2, quantity: 3 }],
+  });
+  assert.deepEqual(workflow.buildAddonSelection('skip', [
+    { id: 1, quantity: 1, isService: true },
+  ]), { addon_decision: 'skip', addons: [] });
 });
 
 test('main tabs support arrow, Home and End keyboard navigation', () => {

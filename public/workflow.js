@@ -7,11 +7,29 @@
 }(typeof globalThis === 'undefined' ? this : globalThis, () => {
   const WASHERS = new Set(['wash_fold', 'wash_only']);
   const DRYERS = new Set(['wash_fold', 'dry_only']);
+  const COMPLETION_ADDON_NAMES = new Set([
+    'Folding',
+    'Ariel — Sunrise Fresh',
+    'Downy — Antibac',
+    'Downy — Sunrise',
+    'Surf — Fabcon Sunbloom',
+    'Surf — Liquid Detergent Rose Fresh',
+    'Tide — Garden Bloom',
+    'Champion — Original',
+    'Zonrox — Colorsafe',
+  ]);
 
   function requiredMachineKind(loadType, destination) {
-    if (destination === 'waiting' && WASHERS.has(loadType)) return 'washer';
+    if (destination === 'washing' && WASHERS.has(loadType)) return 'washer';
     if (destination === 'drying' && DRYERS.has(loadType)) return 'dryer';
     return null;
+  }
+
+  function machineDetailsLabel(machine) {
+    const capacity = Number(machine.capacity_kg);
+    const rawType = String(machine.machine_type || '');
+    const type = rawType ? rawType[0].toUpperCase() + rawType.slice(1).toLowerCase() : 'Unknown';
+    return `Capacity: ${capacity} kg · Type: ${type}`;
   }
 
   function planMachineLoads(totalWeightKg, selectedMachines) {
@@ -51,5 +69,51 @@
     return total;
   }
 
-  return { requiredMachineKind, planMachineLoads, addonSubtotalCents };
+  function completionTotals(orderTotal, paidAmount, addonCents) {
+    const currentTotalCents = Math.round(Number(orderTotal) * 100);
+    const paidCents = Math.round(Number(paidAmount || 0) * 100);
+    const addonSubtotal = Number(addonCents);
+    if (![currentTotalCents, paidCents, addonSubtotal].every(Number.isSafeInteger) ||
+        currentTotalCents < 0 || paidCents < 0 || addonSubtotal < 0) return null;
+    const updatedTotalCents = currentTotalCents + addonSubtotal;
+    return {
+      currentTotalCents,
+      addonSubtotalCents: addonSubtotal,
+      updatedTotalCents,
+      remainingBalanceCents: Math.max(0, updatedTotalCents - paidCents),
+    };
+  }
+
+  function partitionCompletionAddons(addons, existingAddonIds = []) {
+    const existing = new Set(existingAddonIds.map(Number));
+    const catalog = addons.filter((addon) => COMPLETION_ADDON_NAMES.has(addon.name));
+    const alreadyIncluded = catalog.filter((addon) => existing.has(Number(addon.id)));
+    const selectable = catalog.filter((addon) => !existing.has(Number(addon.id)));
+    return {
+      alreadyIncluded,
+      folding: selectable.filter((addon) => addon.name === 'Folding'),
+      products: selectable.filter((addon) => addon.name !== 'Folding'),
+    };
+  }
+
+  function buildAddonSelection(decision, selected) {
+    if (decision === 'skip') return { addon_decision: 'skip', addons: [] };
+    return {
+      addon_decision: 'add',
+      addons: selected.map((item) => ({
+        id: Number(item.id),
+        quantity: item.isService ? 1 : Number(item.quantity),
+      })),
+    };
+  }
+
+  return {
+    requiredMachineKind,
+    machineDetailsLabel,
+    planMachineLoads,
+    addonSubtotalCents,
+    completionTotals,
+    partitionCompletionAddons,
+    buildAddonSelection,
+  };
 }));

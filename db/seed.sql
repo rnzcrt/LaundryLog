@@ -60,6 +60,30 @@ INSERT INTO products (name, unit, stock_quantity, low_stock_threshold) VALUES
     ('Stain remover', 'bottles', 2, 3)
 ON CONFLICT (name) DO NOTHING;
 
+-- Requested optional completion add-ons. Exact-name upserts keep this safe to
+-- rerun and leave order_addons historical name/price snapshots untouched.
+INSERT INTO service_addons (name, price, is_active) VALUES
+    ('Folding', 20.00, true),
+    ('Ariel — Sunrise Fresh', 10.00, true),
+    ('Downy — Antibac', 10.00, true),
+    ('Downy — Sunrise', 10.00, true),
+    ('Surf — Fabcon Sunbloom', 10.00, true),
+    ('Surf — Liquid Detergent Rose Fresh', 10.00, true),
+    ('Tide — Garden Bloom', 10.00, true),
+    ('Champion — Original', 10.00, true),
+    ('Zonrox — Colorsafe', 5.00, true)
+ON CONFLICT (name) DO UPDATE
+SET price = EXCLUDED.price,
+    is_active = true,
+    updated_at = now();
+
+-- Retire legacy timestamp-named workflow-test add-ons without deleting their
+-- rows or changing any order_addons snapshots that may reference them.
+UPDATE service_addons
+SET is_active = false,
+    updated_at = now()
+WHERE name ~ '^Completion add-on [0-9]+$';
+
 INSERT INTO product_movements (product_id, movement_type, quantity, notes)
 SELECT p.id, 'stock_in', 12, 'LaundryLog sample seed: opening detergent stock'
 FROM products p

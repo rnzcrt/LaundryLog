@@ -4,6 +4,7 @@ const express = require("express");
 const db = require("../db");
 const { HttpError, asyncHandler } = require("../middleware/httpError");
 const { parseId } = require("../validators/orderValidators");
+const { inventoryProductName, parseInventoryProductName } = require("../utils/inventoryCatalog");
 
 const router = express.Router();
 
@@ -52,15 +53,17 @@ router.get(
 router.post(
   "/",
   asyncHandler(async (req, res) => {
-    const { name, unit, stock_quantity = 0, low_stock_threshold = 5 } =
+    const { brand, product, unit, stock_quantity = 0, low_stock_threshold = 5 } =
       req.body || {};
 
     const errors = [];
 
-    if (typeof name !== "string" || !name.trim()) {
-      errors.push({ field: "name", message: "Product name is required" });
-    } else if (name.trim().length > 120) {
-      errors.push({ field: "name", message: "Product name must be 120 characters or fewer" });
+    const name = inventoryProductName(brand, product);
+    if (!name) {
+      errors.push({
+        field: "product",
+        message: "Select a supported brand and its configured product",
+      });
     }
 
     if (typeof unit !== "string" || !unit.trim()) {
@@ -97,7 +100,7 @@ router.post(
          RETURNING id, name, unit, stock_quantity, low_stock_threshold,
                    (stock_quantity <= low_stock_threshold) AS low_stock,
                    created_at, updated_at`,
-        [name.trim(), unit.trim(), stock, threshold],
+        [name, unit.trim(), stock, threshold],
       );
 
       res.status(201).location(`/api/products/${rows[0].id}`).json({
@@ -119,7 +122,7 @@ router.patch(
   "/:id",
   asyncHandler(async (req, res) => {
     const id = parseId(req.params.id, "product id");
-    const { name, unit, stock_quantity, low_stock_threshold } =
+    const { name, brand, product, unit, stock_quantity, low_stock_threshold } =
       req.body || {};
 
     const errors = [];
@@ -140,8 +143,21 @@ router.patch(
       const current = currentResult.rows[0];
       const currentStock = Number(current.stock_quantity);
 
+      let selectedName = current.name;
+      if (name !== undefined) {
+        selectedName = parseInventoryProductName(name);
+        if (!selectedName) {
+          errors.push({ field: "name", message: "Choose a product from the supported inventory catalog" });
+        }
+      } else if (brand !== undefined || product !== undefined) {
+        selectedName = inventoryProductName(brand, product);
+        if (!selectedName) {
+          errors.push({ field: "product", message: "Select a supported brand and its configured product" });
+        }
+      }
+
       const next = {
-        name: name === undefined ? current.name : name,
+        name: selectedName,
         unit: unit === undefined ? current.unit : unit,
         stock_quantity:
           stock_quantity === undefined
@@ -152,12 +168,6 @@ router.patch(
             ? Number(current.low_stock_threshold)
             : Number(low_stock_threshold),
       };
-
-      if (typeof next.name !== "string" || !next.name.trim()) {
-        errors.push({ field: "name", message: "Product name is required" });
-      } else if (next.name.trim().length > 120) {
-        errors.push({ field: "name", message: "Product name must be 120 characters or fewer" });
-      }
 
       if (typeof next.unit !== "string" || !next.unit.trim()) {
         errors.push({ field: "unit", message: "Unit is required" });

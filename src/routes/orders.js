@@ -238,8 +238,8 @@ router.post(
       }
 
       const inserted = await client.query(
-        `INSERT INTO orders (customer_id, load_type, weight_kg, item_count, price, note, due_date)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)
+        `INSERT INTO orders (customer_id, load_type, weight_kg, item_count, price, note, due_date, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, 'waiting')
          RETURNING id`,
         [
           customerId,
@@ -265,7 +265,7 @@ router.post(
 
       await client.query(
         "INSERT INTO order_status_history (order_id, status, note) VALUES ($1, $2, $3)",
-        [orderId, "new", "Dropped off at counter"],
+        [orderId, "waiting", "Order received"],
       );
 
       const full = await client.query(`${ORDER_SELECT} WHERE o.id = $1`, [
@@ -337,10 +337,17 @@ router.patch(
       let assignments = [];
       try {
         if (machineKind) {
-          assignments = validateMachineAssignments(
-            body.machine_assignments,
-            before.weight_kg,
-          );
+          const useExistingWasherLoads = status === 'washing' &&
+            (body.machine_assignments === undefined ||
+              (Array.isArray(body.machine_assignments) && body.machine_assignments.length === 0));
+          if (useExistingWasherLoads) {
+            assignments = [];
+          } else {
+            assignments = validateMachineAssignments(
+              body.machine_assignments,
+              before.weight_kg,
+            );
+          }
         } else if (body.machine_assignments !== undefined &&
                    (!Array.isArray(body.machine_assignments) || body.machine_assignments.length > 0)) {
           throw new Error('This order stage does not require machine assignments');
@@ -380,15 +387,18 @@ router.patch(
         }
       }
 
-      if (status === 'washing' && ['wash_fold', 'wash_only'].includes(before.load_type)) {
+      if (status === 'washing' && !assignments.length && ['wash_fold', 'wash_only'].includes(before.load_type)) {
         const washerLoads = await client.query(
           `SELECT COALESCE(SUM(ml.weight_kg), 0) AS weight
            FROM machine_loads ml JOIN machines m ON m.id = ml.machine_id
            WHERE ml.order_id = $1 AND m.machine_kind = 'washer' AND ml.status = 'queued'`,
           [id],
         );
-        if (Math.round(Number(washerLoads.rows[0].weight) * 100) !==
-            Math.round(Number(before.weight_kg) * 100)) {
+        const queuedWeightCentiKg = Math.round(Number(washerLoads.rows[0].weight) * 100);
+        if (queuedWeightCentiKg === 0) {
+          throw new HttpError(400, 'Select at least one available washer before starting the wash');
+        }
+        if (queuedWeightCentiKg !== Math.round(Number(before.weight_kg) * 100)) {
           throw new HttpError(409, 'Assign the full order weight to washer loads before starting the wash');
         }
         const started = await client.query(
@@ -452,6 +462,16 @@ router.patch(
           loadNumber += 1;
         }
         if (status === 'drying') {
+          await client.query(
+            "UPDATE machines SET status = 'running' WHERE id = ANY($1::integer[]) AND status <> 'maintenance'",
+            [assignments.map((assignment) => assignment.machineId)],
+          );
+          await client.query(
+            `UPDATE machine_loads SET status = 'running', started_at = COALESCE(started_at, now())
+             WHERE order_id = $1 AND machine_id = ANY($2::integer[]) AND status = 'queued'`,
+            [id, assignments.map((assignment) => assignment.machineId)],
+          );
+        } else if (status === 'washing') {
           await client.query(
             "UPDATE machines SET status = 'running' WHERE id = ANY($1::integer[]) AND status <> 'maintenance'",
             [assignments.map((assignment) => assignment.machineId)],

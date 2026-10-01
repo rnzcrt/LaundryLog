@@ -104,8 +104,23 @@
 
         <form id="productForm" class="form">
           <label class="field">
-            <span>Product name</span>
-            <input id="productName" name="name" type="text" required />
+            <span>Brand</span>
+            <select id="productBrand" name="brand" required>
+              <option value="" disabled selected>Select a brand</option>
+              <option value="Ariel">Ariel</option>
+              <option value="Downy">Downy</option>
+              <option value="Surf">Surf</option>
+              <option value="Tide">Tide</option>
+              <option value="Champion">Champion</option>
+              <option value="Zonrox">Zonrox</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Product</span>
+            <select id="productSelection" name="product" required disabled>
+              <option value="" selected>Select a brand first</option>
+            </select>
           </label>
 
           <label class="field">

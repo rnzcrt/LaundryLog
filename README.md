@@ -117,8 +117,10 @@ cannot be reconstructed safely. Baseline verification is not a replacement for a
 backup or manual review. Never baseline production without explicit approval. Do not
 run `db/schema.sql`: it is a retired guard file and deliberately exits.
 
-`db/seed.sql` adds sample customers, orders, partial payments, machine loads, products
-and stock movements. Marker values prevent duplicate sample rows when it is rerun.
+`db/seed.sql` adds sample customers, orders, partial payments, machine loads, products,
+stock movements, and the optional Folding/laundry-product add-on catalog. Sample markers
+prevent duplicate rows; add-ons are upserted by their unique names and can be managed
+from the Management tab afterward.
 
 ### Check the project before you run it
 
@@ -199,10 +201,11 @@ review cannot confirm account-specific settings or production database availabil
 1. Staff press **+ New order** and enter customer details, service and weight.
    Wash, dry and fold services use kilograms. Price is calculated from service,
    machine type and number of loads; the browser does not submit a custom price.
-2. Saving the order files it as **New**. If the phone number has been seen
+2. Saving the order places it in **Waiting**. If the phone number has been seen
    before, the order is attached to that existing customer instead of creating a
    duplicate.
-3. Move orders one stage at a time: `new → waiting → washing → drying → folding → ready → completed`.
+3. Move orders one stage at a time: `waiting → washing → drying → folding → ready → completed`.
+   Older orders still marked `new` can move once to `waiting`.
    Each change is appended to the order's timeline with a timestamp and optional note.
 4. Plans split weight across loads within selected machine capacity (8 kg regular,
    10 kg Titan). Assigning a load checks machine capacity, availability and maintenance.
@@ -338,12 +341,16 @@ curl -u "$APP_AUTH_USER" \
 
 ### Pricing and money
 
-Base prices are code constants (there is no pricing settings UI): regular wash ₱70, Titan wash ₱90, regular dry
-₱90, Titan dry ₱110, and folding ₱20. Regular machines are 8 kg and Titan machines
-10 kg; load counts round weight up to the chosen capacity. Wash + dry + fold includes
-all three components. Existing order prices are stored on the order and are not
-recalculated when pricing code changes. Payments are recorded in pesos to two decimal
-places and checked against the remaining balance.
+Base prices are code constants (there is no pricing settings UI): regular wash ₱70,
+Titan wash ₱90, regular dry ₱90, Titan dry ₱110, and folding ₱20. Wash and dry prices
+are charged once per selected service per order; extra machine cycles do not add service
+fees. Regular machines are 8 kg and Titan machines are 10 kg; capacity determines load
+splitting and machine validation. Wash + dry + fold includes one ₱20 folding service
+charge. The configurable `Folding` add-on is an additional optional service for any
+order type; laundry-product add-ons are also optional and support quantities. Existing
+order prices and add-on snapshots are stored and are not recalculated when configuration
+changes. Payments are recorded in pesos to two decimal places and checked against the
+remaining balance.
 Add-on prices can be managed from the Management tab or `/api/addons`; changing or
 deactivating an add-on affects future orders only. Historical order totals and
 line-item snapshots remain unchanged. Standalone customer creation is available in
