@@ -12,9 +12,17 @@ This document contains the visual mockups for the application's screens, based o
 
 ## Design System
 
-The mockups follow the project's colour palette, typography, spacing, reusable components, responsive layout, and accessibility guidelines.
+LaundryLog follows a consistent design system for its colours,
+typography, spacing, reusable components, responsive layouts,
+and accessibility.
 
-See [03 — Design System](03-design-system.md) for the complete design specifications.
+- [Written Design System](03-design-system.md)
+- [Visual Design System (PDF)](03-design-system.pdf)
+- [Colour Tokens](design-system/colour-tokens.pdf)
+- [Typography and Spacing](design-system/type-spacing.pdf)
+- [Buttons and Tags](design-system/button-tag.pdf)
+- [Responsive Plan](design-system/responsive-plan.pdf)
+- [Figma Source](YOUR_FIGMA_LINK_HERE)
 
 ## Desktop Mockups
 
