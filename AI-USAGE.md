@@ -1,244 +1,123 @@
-# AI usage
+# AI Usage — LaundryLog
 
-This project was built with AI assistance. This file is the record of it. It is
-graded as the finals badge, and it is worth 100 points.
-
-Start it in week 1 and keep it up as you go. The commit history of this file is
-part of the evidence: a file written all at once the night before the deadline
-looks exactly like what it is.
-
-> **Status (Week 1):** entries below are real, but every `TODO-SHA` must be
-> replaced with the actual commit link before this is submitted, and section 3
-> has to be filled in by me. Nothing here should be submitted with a TODO left in it.
+This project was built with AI assistance. I used ChatGPT during planning, implementation, debugging, testing, and documentation. This file summarizes the assistance and links it to related commits. The entries below are reconstructed from the project history and should be reviewed and edited to reflect my actual prompts, decisions, and contributions.
 
 ## 1. How I used AI
 
-### 2026-09-20 - Checking the project archive against its documentation
+### 2026-09-27 — Load-based laundry pricing
 
-- **Tool:** Claude (Anthropic), chat interface
-- **What I asked for:** Read the project archive, my terminal history and my
-  screenshots, and help me produce the Week 1 deliverables.
-- **What it gave back:** A check that the README's nine API endpoints, its error
-  codes and the "13 required files, 10 JavaScript files" claim matched the code, plus
-  a list of things I had not written down (the "1 items" wording bug, the database
-  expiry date, and that the deployed site has no login).
-- **What I kept, what I changed, and why:** I kept all of the findings because I
-  could see each one in the code or the Render dashboard. I did not change any
-  application code as a result.
-- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/e47fff3
+* **Tool:** ChatGPT
+* **What I asked for:** Help implementing pricing based on laundry service, machine type, and number of loads.
+* **What it gave back:** A pricing utility and test cases for Regular and Titan washing, drying, and folding.
+* **What I kept, what I changed, and why:** The pricing utility and related tests were committed. I reviewed the values against the project's intended service prices. I should confirm the final pricing behavior against the current implementation.
+* **Commit:** https://github.com/rnzcrt/LaundryLog/commit/275b930
 
-### 2026-09-20 - First draft of the Week 1 increment report
+### 2026-09-27 — Combined service pricing
 
-- **Tool:** Claude (Anthropic), chat interface
-- **What I asked for:** A report in the course's format from my commits, terminal
-  history and screenshots.
-- **What it gave back:** A report covering what changed, why, what broke, and what
-  is left, with a table of the commits that back it up.
-- **What I kept, what I changed, and why:** I kept the structure and the list of
-  problems. I corrected the start date, because the draft said I began on
-  September 19 and I actually started on September 15, with the real work beginning on September 17.
-- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/c4324e0 (first version), https://github.com/rnzcrt/LaundryLog/commit/f2e6b94 (date correction)
+* **Tool:** ChatGPT
+* **What I asked for:** Help calculating a total when an order includes more than one service.
+* **What it gave back:** A combined pricing function and tests for single-service and combined-service orders.
+* **What I kept, what I changed, and why:** The combined pricing logic and tests were added. The pricing rules were later refined to reflect the project's actual service model.
+* **Commit:** https://github.com/rnzcrt/LaundryLog/commit/e893acd
 
-### 2026-09-20 - README update
+### 2026-09-27 — Split-load planning
 
-- **Tool:** Claude (Anthropic), chat interface
-- **What I asked for:** Bring the README up to date with the live site, the real
-  clone URL, deployment steps and screenshots.
-- **What it gave back:** A rewritten README with a Render deployment section,
-  corrected known issues, and later an architecture section, a next-steps list and
-  the AI use section from the template.
-- **What I kept, what I changed, and why:** I kept the setup and API sections after checking them against `package.json` and the routes. I changed the README to document the actual Render deployment, local setup, screenshots, known issues, project structure, architecture, and AI use. I also corrected details that did not match the current project.
-- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/e47fff3 (first version), https://github.com/rnzcrt/LaundryLog/commit/2de2465 (template sections)
+* **Tool:** ChatGPT
+* **What I asked for:** Help planning how to divide an order's weight into loads that fit the selected machine's capacity.
+* **What it gave back:** A load-splitting utility, an API endpoint for load plans, and tests for different capacities and invalid input.
+* **What I kept, what I changed, and why:** The load-splitting approach and validation tests were included. The resulting load weights make it easier to plan machine assignments without exceeding capacity.
+* **Commit:** https://github.com/rnzcrt/LaundryLog/commit/aad890a
 
-### 2026-09-20 - Reflection journal draft and rewrite
+### 2026-09-28 — Order services and automatic pricing
 
-- **Tool:** Claude (Anthropic), chat interface
-- **What I asked for:** A journal entry from the week's evidence, and then a
-  version that sounds more like a person wrote it.
-- **What it gave back:** A journal in first person covering the goal, what I did,
-  what got in the way, what I learned, and the security paragraph the template asks for.
-- **What I kept, what I changed, and why:** I used the draft as a starting point, but I rewrote parts of it to match what I actually did and what I actually learned. I checked the dates, setup work, database work, deployment, and testing against my terminal history, project files, screenshots, and the running application. I did not keep statements that did not match my actual work.
-- **Commit:** Journal is maintained in my private workspace repository; its commit is not present in the public LaundryLog repository.
+* **Tool:** ChatGPT
+* **What I asked for:** Help supporting different laundry service selections, preserving older records, and calculating order prices automatically.
+* **What it gave back:** Suggested changes to service handling, validation, pricing, and tests.
+* **What I kept, what I changed, and why:** The service and pricing updates were incorporated and tested. Legacy records needed to remain readable, so the implementation had to account for existing data as well as new orders.
+* **Commit:** https://github.com/rnzcrt/LaundryLog/commit/29f0e8e
+  Related commit: https://github.com/rnzcrt/LaundryLog/commit/ac9075b
 
-### 2026-09-20 - Screenshot processing
+### 2026-09-28 — Payment status and outstanding balance
 
-- **Tool:** Claude (Anthropic), chat interface
-- **What I asked for:** Rename and shrink the three screenshots for the README, and
-  later remove the browser tab strip and menu bar from them.
-- **What it gave back:** Three page-only images in `docs/screenshots/`.
-- **What I kept, what I changed, and why:** I kept the crops because the original
-  screenshots showed the names of my other browser tabs, including a private
-  repository, which does not belong in a public repo.
-- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/376fbb9 (first version), https://github.com/rnzcrt/LaundryLog/commit/8868aa5 (cropped versions)
+* **Tool:** ChatGPT
+* **What I asked for:** Help tracking how much an order has been paid and how much remains outstanding.
+* **What it gave back:** Backend and interface changes for payment status and outstanding balance.
+* **What I kept, what I changed, and why:** The payment and balance functionality was added to the order workflow. I reviewed it in the context of the existing order data and payment process.
+* **Commit:** https://github.com/rnzcrt/LaundryLog/commit/74ef47b
 
-### 2026-09-20 - Reading the course template and checking against it
+### 2026-09-30 — Split payments and payment history
 
-- **Tool:** Claude (Anthropic), chat interface
-- **What I asked for:** Which database options the template allows, and whether my
-  files followed the template.
-- **What it gave back:** The template's rules for the AI-USAGE file, the security
-  checklist audit of my code (no `helmet`, no rate limiting, no length limits on text
-  fields), and that the template expects a React client, an Express API and a
-  PostgreSQL database, which my project does not match.
-- **What I kept, what I changed, and why:** I kept the security findings and put them
-  in the README and my journal. The React question I am taking to my instructor
-  rather than deciding myself.
-- **Commit:** [https://github.com/rnzcrt/LaundryLog/commit/2de2465](https://github.com/rnzcrt/LaundryLog/commit/2de2465) (README sections), [https://github.com/rnzcrt/LaundryLog/commit/cb87b61](https://github.com/rnzcrt/LaundryLog/commit/cb87b61) (AI-USAGE.md)
+* **Tool:** ChatGPT
+* **What I asked for:** Help allowing customers to pay an order in multiple transactions while retaining payment history.
+* **What it gave back:** Database and API changes to support split payments and payment records.
+* **What I kept, what I changed, and why:** The split-payment approach and payment history were implemented so partial payments could be tracked without losing previous transactions.
+* **Commit:** https://github.com/rnzcrt/LaundryLog/commit/411469c
+
+### 2026-09-30 — Sales and collections reporting
+
+* **Tool:** ChatGPT
+* **What I asked for:** Help distinguishing order sales from money actually collected and displaying reporting totals.
+* **What it gave back:** A reporting endpoint, interface changes, and tests for sales and collections.
+* **What I kept, what I changed, and why:** The reporting feature was added to distinguish completed sales from payments received. I reviewed the calculations against the application's order and payment records.
+* **Commit:** https://github.com/rnzcrt/LaundryLog/commit/2151657
+
+### 2026-09-30 — Customer and inventory interface
+
+* **Tool:** ChatGPT
+* **What I asked for:** Help improving how customer and inventory information is displayed and managed.
+* **What it gave back:** Interface and styling changes for customer and inventory tables.
+* **What I kept, what I changed, and why:** The redesigned tables were included to make records easier to browse and manage. I reviewed the interface against the application's actual workflows.
+* **Commit:** https://github.com/rnzcrt/LaundryLog/commit/bb591f0
+
+### 2026-10-01 — Order workflow and add-on catalog
+
+* **Tool:** ChatGPT
+* **What I asked for:** Help improving the order stages, machine assignment flow, completion add-ons, inventory validation, and test reliability.
+* **What it gave back:** Suggested backend workflow validation, frontend changes, add-on catalog updates, migration changes, and tests.
+* **What I kept, what I changed, and why:** The changes were incorporated into the order workflow and add-on catalog. The production database needed the migration applied for the new catalog to appear. I reviewed the deployed application after the migration.
+* **Commit:** https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5
 
 ## 2. Where the AI got it wrong
 
-### Case 1 - Wrong start date
+**Replace these prompts with three genuine cases from your own experience.** The examples below are reminders of areas to inspect, not claims that these mistakes definitely occurred. Only keep a case if it accurately describes an AI suggestion you received and how you corrected it.
 
-- **What it gave me:** A report and a journal that both said I started on
-  September 19 and had made no progress before then.
-- **What was wrong with it:** It inferred the date from my commit dates and file
-  timestamps. I started on September 15, so the two written files were inaccurate
-  until I corrected them.
-- **What I did instead:** I told it the real date, and both files were rewritten to
-  say I started on September 15, began the real work on September 17, and completed the setup, additions and deployment on September 19.
-- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/f2e6b94
+### Case 1 — Pricing assumptions
 
-### Case 2 - Report in the wrong repository
+* **What it gave me:** *Describe the specific pricing logic or code suggested by AI.*
+* **What was wrong with it:** *Explain exactly how the suggestion differed from the pricing rules you intended, if this happened.*
+* **What I did instead:** *Describe the change you made and how you checked the result.*
+* **Commit:** https://github.com/rnzcrt/LaundryLog/commit/275b930
 
-- **What it gave me:** Instructions to put `REPORT.md` in both my workspace and my
-  public project repo.
-- **What was wrong with it:** The course rules say everything I write about the
-  project lives in the private workspace, and the public repo holds only the project.
-  It had not been given that rule yet, and it also left a duplicate that could drift.
-- **What I did instead:** I removed `REPORT.md` from the public repo and kept the
-  graded copy in `project/REPORT.md` in my workspace.
-- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/34e747e
+### Case 2 — Workflow or machine assignment
 
-### Case 3 - Screenshots that showed private information
+* **What it gave me:** *Describe a specific incorrect or incomplete workflow or machine-assignment suggestion, if applicable.*
+* **What was wrong with it:** *Explain the actual issue, such as a transition or capacity rule it failed to handle.*
+* **What I did instead:** *Describe your correction and how you tested it.*
+* **Commit:** https://github.com/rnzcrt/LaundryLog/commit/efcf044
 
-- **What it gave me:** Downscaled screenshots that still included my browser's tab
-  strip and menu bar.
-- **What was wrong with it:** The tab strip showed the name of my private workspace
-  repository and my other open tabs. The AI did not think about what a public README
-  should not show until the privacy rule was pasted into the chat.
-- **What I did instead:** I replaced them with crops that remove the tab strip and menu bar. The first versions
-  are still in the repository history.
-- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/376fbb9 (the wrong version), https://github.com/rnzcrt/LaundryLog/commit/8868aa5 (the fix)
+### Case 3 — Documentation or deployment
+
+* **What it gave me:** *Describe a specific inaccurate README, setup, security, or deployment suggestion, if applicable.*
+* **What was wrong with it:** *Explain which part did not match the actual repository or deployment.*
+* **What I did instead:** *Describe how you verified and corrected the documentation or configuration.*
+* **Commit:** https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5
 
 ## 3. Who wrote what
 
-At this point, most of the LaundryLog application came from the supplied project archive. I did not write the original application backbone, so I am not counting that code as my own.
-
-The code and project changes I can honestly identify as mine so far are listed below. I will add to this section as I write more of the project in later weeks.
+The commit history shows changes associated with my GitHub account, but that alone does not establish which lines were written by me or generated with AI. The sections below are a starting point. I need to confirm them based on my actual work and ability to explain the code.
 
 ### Written by me
 
-- **File:** `scripts/check.js`
-- **Commit:** `c7df593`
-- **What it does and why it is built this way:** This is a preflight check I added to make sure required project files exist and that the JavaScript files pass syntax checks before I continue working on the project. I wanted a quick local check instead of discovering basic file or syntax problems later.
-
-- **File:** `public/app.js`
-- **Commit:** `5d12768`
-- **What it does and why it is built this way:** I fixed the item-count display so an order with one item says `1 item` and an order with more than one says `2 items`, `3 items`, and so on. I kept the change small because the existing display logic already worked except for the singular wording.
-
-- **File:** `test/orders.test.js`
-- **Commit:** `dd5a735`
-- **What it does and why it is built this way:** I added automated API tests for two validation cases I manually tested: requesting an order that does not exist should return HTTP 404, and creating an order without required fields should return HTTP 400. I used Node's built-in test runner so the tests can run with `npm test` without adding another test framework.
-
-- **File:** `package.json`
-- **Commit:** `dd5a735`
-- **What it does and why it is built this way:** I added the `npm test` script so the automated tests can be run with one consistent command.
-
-- **File:** `.gitignore`
-- **Commit:** `c7df593`
-- **What it does and why it is built this way:** I added ignore rules for local files that should not be committed, including the local environment file containing database credentials.
-
-- **File:** `.env.example`
-- **Commit:** `c7df593`
-- **What it does and why it is built this way:** I added a safe example of the environment variables needed to run the project without putting my actual local database credentials into the repository.
+* **File:** `*Add a file or feature you personally wrote or substantially implemented.*`
+* **Commit:** `*Add the relevant commit URL.*`
+* **What it does and why it is built this way:** Explain the code in your own words. Describe its inputs, outputs, key decisions, and how you tested it. Be specific about the part you personally wrote and understand.
 
 ### The AI-written part I understand best
 
-- **File:** `src/routes/orders.js`
-- **Commit:** `c7df593`
-- **What it does and why we kept it:** This was part of the supplied project backbone rather than code I wrote from scratch. I understand it as the Express router responsible for the order API: listing and searching orders, retrieving an individual order, creating orders, changing order status, and recording payments. I kept it because it provides the main backend API used by the LaundryLog frontend, and I tested its behavior through local API requests.
+* **File:** `src/utils/orderWorkflow.js` *(confirm this is the file you want to discuss)*
+* **Commit:** https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5
+* **What it does and why we kept it:** This utility supports the application's order-stage rules. The workflow moves an order through Waiting, Washing, Drying, Folding, Ready, and Completed, and validates whether a requested status change is allowed. Keeping workflow rules in a shared utility helps the backend apply consistent checks instead of relying only on the interface. I should be able to explain the specific functions and tests in the current file.
 
-I am not claiming that the supplied code is mine. The initial `c7df593` commit contains the starting LaundryLog application, including the Express application, routes, database code, validators, frontend, schema, seed data, and styling. I reviewed and tested that code while completing the project, but I distinguish that from code I personally added or changed.
+---
 
-## Week 2 AI usage
-
-### Customer search and order history
-
-- **AI tool:** ChatGPT
-- **Task:** I used ChatGPT to help me inspect the existing LaundryLog customer API and plan a manageable enhancement from the provided project requirements.
-- **What I personally implemented:** I wrote the frontend customer directory functionality in `public/app.js` and added the customer search section to `public/index.html`. This includes customer search by name or phone, customer result rendering, and opening customer order history.
-- **Existing code reused:** The existing `src/routes/customers.js` API already provided customer search and customer order history endpoints. I reused those endpoints rather than rebuilding the backend.
-- **Testing:** I tested customer search with existing customers, searched by phone number, tested a search with no results, and opened customer history for multiple customers. I also ran `node --check public/app.js`, `npm run check`, and `npm test`; all automated tests passed.
-- **Commit:** `247c616`
-- **Result:** The customer directory and order-history feature works locally without breaking the existing order workflow.
-### Machine inventory and load assignment
-
-- **AI tool:** ChatGPT
-- **Task:** I used ChatGPT to help me plan and implement a machine inventory and machine-load assignment enhancement while preserving the existing LaundryLog database and application structure.
-- **What I personally implemented:** I added the machine database migration in `db/migrations/001_add_machines.sql`, added the machine API in `src/routes/machines.js`, registered the machine route in `src/app.js`, added machine-load validation in `src/validators/orderValidators.js`, and added the order machine-load endpoint in `src/routes/orders.js`.
-- **Existing code reused:** I reused the existing PostgreSQL connection/transaction module in `src/db.js`, existing `HttpError` and `asyncHandler` middleware, existing order ID validation, and the existing Express routing structure.
-- **Database changes:** I added `machines` and `machine_loads` tables through a non-destructive migration and seeded the required 8 machines. Existing orders and customers were preserved.
-- **Testing:** I verified the authenticated machine API returned all 8 machines. I created one valid 2 kg machine load for existing order #9, verified a 9 kg load was rejected by an 8 kg machine, verified a second active load on the same machine was rejected, and verified the database still contained only the single valid load. `npm run check` passed and `npm test` passed 3/3.
-- **Commit:** `66c8b4e`
-- **Result:** The project now has a working machine inventory and basic machine-load assignment with capacity and active-load protection.
-
-### Machine-load status tracking
-
-- **AI tool:** ChatGPT
-- **Task:** I used ChatGPT to help me implement and test machine-load status tracking for the machine enhancement.
-- **What I personally implemented:** I added the machine-load status endpoint in `src/routes/orders.js`, including the `queued → running → completed` workflow, timestamp updates, machine status updates, transition validation, and maintenance protection. I also added automated tests in `test/orders.test.js`.
-- **Testing:** I manually verified `queued → running`, `running → completed`, automatic `started_at` and `completed_at` timestamps, the machine changing to `running` and then back to `available`, and rejection of an invalid completed-to-running transition. I also ran `npm test` with 5/5 tests passing and `npm run check` successfully.
-- **Commit:** `ff67583`
-- **Result:** Machine-load status tracking now works with validated status transitions and corresponding machine availability updates.
-
-### Kanban board and seven-stage order workflow
-
-* **AI tool:** ChatGPT
-* **Task:** I used ChatGPT to help me implement a Kanban board and update the order workflow to support seven stages, from new orders through completion.
-* **What I personally implemented:** I integrated the Kanban rendering, drag-and-drop handlers, and styling into the existing frontend by following and adapting the code provided during the ChatGPT session. I also applied the database migration and updated the existing status-related files.
-* **Existing code reused:** I reused the existing order cards, status labels, order detail dialog, status update API, and frontend styling.
-* **Database changes:** I added `db/migrations/003_update_order_statuses.sql` to migrate existing order and status-history values to the new seven-stage workflow. I also updated `db/schema.sql` for fresh database setups.
-* **Testing:** I verified that all seven Kanban columns display, orders appear under their current statuses, clicking an order opens its details, and drag-and-drop only allows moving an order forward to the next stage. I ran `npm test` with 17/17 tests passing, `npm run check` with 13 required files and 14 JavaScript syntax checks passing, and `git diff --check` successfully.
-* **Commit:** `e97bb86` — https://github.com/rnzcrt/LaundryLog/commit/e97bb86
-* **Result:** The Kanban board works locally and supports forward-only order progression through the seven workflow stages.
-
-### Dashboard metrics and styling
-
-* **AI tool:** ChatGPT
-* **Task:** I used ChatGPT to help me implement a Dashboard displaying order totals, revenue, collections, and outstanding balances.
-* **What I personally implemented:** I added the Dashboard section to `public/index.html`, implemented the `renderDashboard()` function and connected it to `loadOrders()` in `public/app.js`, and added responsive Dashboard card styling in `public/styles.css`, following and adapting the code provided during the ChatGPT session.
-* **Existing code reused:** I reused the existing orders API, order data, payment fields, `peso()` formatting function, and LaundryLog design-system CSS variables.
-* **Testing:** I verified that the Dashboard displays 11 orders, ₱4,174.00 in revenue, ₱574.00 in collections, and ₱3,600.00 in outstanding balances. I ran `npm test` with 17/17 tests passing, `npm run check` with 13 required files and 14 JavaScript syntax checks passing, and `git diff --check` successfully.
-* **Commit:** `18ca6f2`
-* **Result:** The Dashboard displays all-time order totals, revenue, collections, and outstanding balances, with responsive styling for smaller screens.
-
-### Products & Soaps Inventory
-
-* **AI tool:** ChatGPT
-* **Task:** I used ChatGPT to help me add product inventory management to LaundryLog so staff could track supplies used by the laundry shop.
-* **What I personally implemented:** I added the product inventory functionality by following and adapting the implementation guidance, including the product form, stock display, low-stock indicators, and stock editing.
-* **Database changes:** I added `db/migrations/004_add_products.sql` to create the products table.
-* **Existing code reused:** I reused the existing PostgreSQL connection, Express routing structure, frontend components, and application styling.
-* **Testing:** I tested adding and displaying products, editing stock, and checking the inventory after refreshing the page.
-* **Commit:** `844f1df` — https://github.com/rnzcrt/LaundryLog/commit/844f1df
-* **Result:** Staff can add products, track their stock quantities, and identify products that have reached their low-stock thresholds.
-
-### Product stock movement tracking
-
-* **AI tool:** ChatGPT
-* **Task:** I used ChatGPT to help me add a history of stock movements so inventory changes could be reviewed.
-* **What I personally implemented:** I added stock-in, usage, manual adjustment, and movement-history functionality by following and adapting the provided implementation guidance.
-* **Database changes:** I added `db/migrations/005_add_product_movements.sql` and `db/migrations/006_allow_product_adjustments.sql` to record product movements and support manual adjustments.
-* **Testing:** I verified stock-in increased the quantity, usage decreased it, and manual adjustments were recorded in the movement history. I also verified that usage exceeding available stock was rejected and did not change the stock quantity. I refreshed the page to confirm the data persisted.
-* **Commit:** `97e6926` — https://github.com/rnzcrt/LaundryLog/commit/97e6926
-* **Result:** Product stock changes are recorded with movement types, quantities, notes, and timestamps. The system prevents usage from reducing stock below zero.
-
-
-### Product unit dropdown
-
-* **AI tool:** ChatGPT
-* **Task:** I used ChatGPT to help me make product units selection-only to keep inventory entries consistent.
-* **What I personally implemented:** I changed the Unit field in `public/index.html` from a free-text input to a dropdown with predefined units: liters, milliliters, kilograms, grams, bottles, pieces, and packs.
-* **Testing:** I tested the dropdown locally, ran `npm test` with 17/17 tests passing, and ran `npm run check` successfully. I committed and pushed the change, then verified that the dropdown appeared correctly on the live Render site.
-* **Commit:** `2d05d5c` — https://github.com/rnzcrt/LaundryLog/commit/2d05d5c
-* **Result:** Staff can select a predefined unit instead of entering inconsistent free-text unit names.
+**Before submitting:** replace the three “Where the AI got it wrong” prompts with real examples, and complete “Written by me” with code you can explain confidently. Check each entry against your ChatGPT history and Git commits; edit or remove anything that does not reflect what actually happened. Add new entries as you use AI, rather than relying only on this reconstructed history.
