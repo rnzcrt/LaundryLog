@@ -1,250 +1,149 @@
-# Mockup
+# LaundryLog — Mockup
 
-**App Name:** LaundryLog
 **Author:** Ranz Emmanuel G. Cuarto
 **Course:** CS-403 — APSI
 **Last Updated:** October 2, 2026
 
 ## Overview
 
-This document presents the visual design direction and screen mockups for LaundryLog, a web-based laundry shop management system.
+LaundryLog is a web-based laundry shop management system for managing customer orders, tracking laundry progress, assigning machines, managing inventory, and monitoring payments and collections.
 
-The preliminary wireframes established the initial screen layouts. The design system defines the colours, typography, spacing, reusable components, responsive behavior, and accessibility considerations used to style the application.
-
-The mockups should represent the actual implemented application, including its current order workflow, machine management, customer records, payments, inventory, and reporting features.
+This document contains the visual mockups for the application's screens, based on the revised project proposal and LaundryLog Design System.
 
 ## Design System
 
-The mockups follow the LaundryLog design system.
+The mockups follow the project's colour palette, typography, spacing, reusable components, responsive layout, and accessibility guidelines.
 
-### Colour Palette
+See [03 — Design System](03-design-system.md) for the complete design specifications.
 
-| Token      | Colour    | Purpose                        |
-| ---------- | --------- | ------------------------------ |
-| Primary    | `#2563EB` | Links, buttons, active states  |
-| Accent     | `#F59E0B` | Calls to action and highlights |
-| Background | `#F8FAFC` | Main page background           |
-| Surface    | `#FFFFFF` | Cards and panels               |
-| Text       | `#1E293B` | Body text                      |
-
-### Typography
-
-| Text Style | Size | Weight  | Usage                             |
-| ---------- | ---: | ------- | --------------------------------- |
-| Heading    | 24px | Bold    | Screen and section titles         |
-| Body       | 16px | Regular | Paragraphs and lists              |
-| Small      | 13px | Regular | Captions, labels, and footer text |
-
-### Spacing
-
-The design uses an 8px base spacing unit.
-
-| Token       | Value | Purpose                             |
-| ----------- | ----: | ----------------------------------- |
-| `--space-1` |   8px | Tight spacing between related items |
-| `--space-2` |  16px | Screen-edge padding                 |
-| `--space-4` |  32px | Standard spacing between sections   |
-
-### Reusable Components
-
-* **Button:** Primary and secondary variants for actions throughout the application.
-* **Tag:** Status indicator for orders, with colours mapped to the current order status.
-* **Status Filter:** Tabs or controls for filtering orders by status.
-* **Header:** Displays the screen title and relevant navigation actions.
-* **Order Card:** Displays a customer's order summary and current status.
-
-## Screen Mockups
-
-Export the finished mockup images as PNG, JPG, or PDF and place them in the repository's `assets/` directory. Replace the image placeholders below with the actual filenames once the exports are available.
+## Desktop Mockups
 
 ### 1. Order List / Dashboard
 
-**Purpose:** Displays active orders and allows staff to review orders by processing status.
+Displays orders and their current processing statuses, allowing staff to find and manage orders.
 
-**Expected content:**
-
-* LaundryLog header and navigation.
-* New Order button.
-* Status filters.
-* Order cards with customer names, services, weights, and statuses.
-* Relevant order information at a glance.
-
-**Mockup image:**
-`assets/mockup-order-list.png` — *Add exported mockup.*
+![Order List](../assets/mockup-order-list.png)
 
 ### 2. New Order
 
-**Purpose:** Allows staff to record a customer's laundry when it is received.
+Allows staff to record a new customer order, select laundry services, enter load details, and view calculated pricing.
 
-**Expected content:**
-
-* Customer selection or customer details.
-* Laundry service selection.
-* Weight and load information.
-* Pricing information.
-* Order creation action.
-
-**Mockup image:**
-`assets/mockup-new-order.png` — *Add exported mockup.*
+![New Order](../assets/mockup-new-order.png)
 
 ### 3. Order Detail
 
-**Purpose:** Displays the full details of an order and allows staff to manage its progress.
+Displays customer and order information, processing status, machine assignments, payment history, outstanding balance, and available add-ons.
 
-**Expected content:**
-
-* Customer and order information.
-* Current status and workflow actions.
-* Laundry weight, service, and pricing.
-* Assigned machine information, where applicable.
-* Payment history, amount paid, and outstanding balance.
-* Available completion add-ons.
-
-**Mockup image:**
-`assets/mockup-order-detail.png` — *Add exported mockup.*
+![Order Detail](../assets/mockup-order-detail.png)
 
 ### 4. Machine Management
 
-**Purpose:** Helps staff view machines, check their status, and assign machines to orders.
+Displays machine types, capacities, availability, and current assignments.
 
-**Expected content:**
-
-* Machine list.
-* Machine type and capacity.
-* Machine availability or current status.
-* Assigned order information, where applicable.
-* Machine assignment controls.
-
-**Mockup image:**
-`assets/mockup-machines.png` — *Add exported mockup.*
+![Machine Management](../assets/mockup-machines.png)
 
 ### 5. Customer Management
 
-**Purpose:** Provides a directory of customers and their related information.
+Displays customer records and relevant contact and order information.
 
-**Expected content:**
-
-* Customer list or table.
-* Customer name and contact details.
-* Relevant order information.
-* Actions for managing customer records.
-
-**Mockup image:**
-`assets/mockup-customers.png` — *Add exported mockup.*
+![Customer Management](../assets/mockup-customers.png)
 
 ### 6. Inventory Management
 
-**Purpose:** Allows staff to view and manage laundry products and stock information.
+Displays supported laundry products, stock information, and inventory management controls.
 
-**Expected content:**
-
-* Inventory list or table.
-* Supported product brands and product names.
-* Stock information.
-* Inventory management actions.
-
-**Mockup image:**
-`assets/mockup-inventory.png` — *Add exported mockup.*
+![Inventory Management](../assets/mockup-inventory.png)
 
 ### 7. Sales and Collections Reporting
 
-**Purpose:** Displays recorded sales and payment collections to help staff review shop activity.
+Displays recorded sales and collection information to help staff review shop activity.
 
-**Expected content:**
-
-* Sales and collections summaries.
-* Relevant reporting information.
-* Transaction or payment-related figures.
-* Clear date or reporting context, where supported by the application.
-
-**Mockup image:**
-`assets/mockup-reports.png` — *Add exported mockup.*
+![Sales and Collections](../assets/mockup-reports.png)
 
 ## Empty State
 
-At least one screen must show what the user sees when there is no data to display.
+### Order List — No Matching Orders
 
-### Order List — No Orders
+The empty state represents what staff see when no orders match the selected filter.
 
-**Expected content:**
-
-* LaundryLog header.
-* Status filters.
-* Clear message indicating that no orders match the selected filter.
-* An action to create a new order, where appropriate.
+This is a separately designed mockup and does not require deleting any records from the production database. It can be created using a design tool or a separate mock-data view.
 
 **Suggested message:**
-"No orders found. Create a new order to get started."
 
-**Mockup image:**
-`assets/mockup-order-list-empty.png` — *Add exported mockup.*
+"No orders found. Try another filter or create a new order."
 
-## Mobile Layout
+![Empty Order List](../assets/mockup-order-list-empty.png)
 
-LaundryLog should remain usable on mobile screens, especially for staff who need to check orders while moving around the shop.
+## Mobile Mockups
 
-The design system specifies that at 375px width, layouts should stack into a single column below the responsive breakpoint without horizontal scrolling.
+The mobile layouts adapt the interface to narrow screens, stacking content into a single column and avoiding horizontal scrolling at a 375px viewport width.
 
-The mobile mockups should show:
+### Mobile Order List
 
-* A compact header and accessible navigation.
-* Order cards stacked vertically.
-* Readable status labels and action buttons.
-* Forms arranged in a single column.
-* Tables or wide content adapted for narrow screens.
-* Buttons and controls that remain easy to tap.
+![Mobile Order List](../assets/mockup-mobile-order-list.png)
 
-**Mobile mockup images:**
+### Mobile Order Detail
 
-* `assets/mockup-mobile-order-list.png` — *Add exported mockup.*
-* `assets/mockup-mobile-order-detail.png` — *Add exported mockup.*
-* `assets/mockup-mobile-new-order.png` — *Add exported mockup.*
+![Mobile Order Detail](../assets/mockup-mobile-order-detail.png)
+
+### Mobile New Order
+
+![Mobile New Order](../assets/mockup-mobile-new-order.png)
 
 ## Accessibility
 
-The design system identifies the following accessibility requirements:
+The mockups follow these accessibility requirements:
 
-* Text and background colour combinations should meet a contrast ratio of at least 4.5:1.
-* Use semantic elements for headers, navigation, main content, and interactive controls.
-* Provide appropriate alternative text for meaningful images.
-* Associate form inputs with labels.
-* Ensure links and buttons are keyboard accessible with visible focus states.
+* Text and background combinations should meet a contrast ratio of at least 4.5:1.
+* Use semantic elements for page structure and interactive controls.
+* Provide suitable alternative text for meaningful images.
+* Associate each form input with a label.
+* Ensure links and buttons are keyboard accessible.
+* Provide visible keyboard focus states.
 
-These are design requirements and should be verified against the implemented application before being marked as fully satisfied.
+These requirements should be verified against the implemented application.
 
 ## Mockup and Implementation Alignment
 
-The mockups should reflect the current application rather than only the original preliminary wireframes.
+The mockups represent the current LaundryLog features:
 
-The current project includes:
-
-* Order tracking through Waiting, Washing, Drying, Folding, Ready, and Completed.
-* Machine assignment and load planning.
-* Automatic pricing and combined services.
+* Order workflow: Waiting, Washing, Drying, Folding, Ready, and Completed.
+* Machine management and assignment.
+* Load planning and automatic pricing.
+* Customer management.
 * Split payments and payment history.
-* Add-on services and products.
-* Customer and inventory management.
+* Completion add-ons.
+* Inventory management.
 * Sales and collections reporting.
 
-Any visual element shown in the final mockups that is not implemented by the end of the project should be documented in the reflection journal, including what changed and why.
+Any element shown in the mockups that is not implemented in the final application should be explained in the reflection journal, including what changed and why.
 
-## Asset Checklist
+## Assets
 
-* [ ] Finished, styled order list mockup
-* [ ] New order mockup
-* [ ] Order detail mockup
-* [ ] Machine management mockup
-* [ ] Customer management mockup
-* [ ] Inventory management mockup
-* [ ] Sales and collections reporting mockup
-* [ ] Empty-state mockup
-* [ ] Mobile order list mockup
-* [ ] Mobile order detail mockup
-* [ ] Mobile new order mockup
-* [ ] Exported images or PDF saved in `assets/`
-* [ ] Image links updated in this document
-* [ ] Mockups compared against the final implemented application
+Export mockup images into the repository's `assets/` directory using the filenames referenced above. The images should show realistic content and match the final application.
 
-## Source Design System
+| Filename                         | Screen                |
+| -------------------------------- | --------------------- |
+| `mockup-order-list.png`          | Desktop Order List    |
+| `mockup-order-list-empty.png`    | Empty Order List      |
+| `mockup-new-order.png`           | New Order             |
+| `mockup-order-detail.png`        | Order Detail          |
+| `mockup-machines.png`            | Machine Management    |
+| `mockup-customers.png`           | Customer Management   |
+| `mockup-inventory.png`           | Inventory Management  |
+| `mockup-reports.png`             | Sales and Collections |
+| `mockup-mobile-order-list.png`   | Mobile Order List     |
+| `mockup-mobile-order-detail.png` | Mobile Order Detail   |
+| `mockup-mobile-new-order.png`    | Mobile New Order      |
 
-The colour palette, typography, spacing rules, reusable components, responsive layout guidance, and accessibility checklist are based on the LaundryLog Design System document supplied for this project.
+## Final Review
+
+* [ ] All screens from the revised proposal are represented.
+* [ ] Mockups use the LaundryLog Design System.
+* [ ] Realistic sample content is used.
+* [ ] An empty state is included as a separate mockup.
+* [ ] Mobile layouts are shown.
+* [ ] Images are exported to `assets/`.
+* [ ] Image links work in the repository.
+* [ ] Mockups have been compared with the final application.
+* [ ] Unimplemented features are documented in the reflection journal.
