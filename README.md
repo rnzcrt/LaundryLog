@@ -1,76 +1,121 @@
 # LaundryLog
 
-**Project repository URL:** https://github.com/rnzcrt/LaundryLog  
-**Previously used site URL:** https://laundrylog.onrender.com (availability not verified)
+LaundryLog is a web-based laundry management system for laundry shop owners and staff to manage customer orders, machine assignments, payments, inventory, and daily operations.
 
-![LaundryLog order list screenshot](https://raw.githubusercontent.com/rnzcrt/LaundryLog/main/docs/screenshots/order-list.png)
+**Live site:** https://laundrylog.onrender.com
+**API health:** https://laundrylog.onrender.com/healthz
+**Demo video:** *Add your public Google Drive link after recording.*
 
-## 1. Overview
+![LaundryLog main screen](assets/screenshot.png)
 
-LaundryLog is a small laundry shop management system. Staff log drop-offs, track
-orders through a seven-step Kanban workflow, assign physical machine loads, manage
-customers and stock, record split payments, and review sales and collections.
+## What it does
 
-It is built for the one or two people working the counter, not for customers.
+* Create and manage laundry orders with customer and service details.
+* Track orders through **Waiting → Washing → Drying → Folding → Ready → Completed**.
+* Assign available washers and dryers while respecting machine capacity.
+* Split laundry loads to fit the selected machine's capacity.
+* Calculate service prices based on service type and load weight.
+* Record full or split payments and track outstanding balances.
+* View payment history, sales, and collections reports.
+* Manage customer records and search customer history.
+* Track inventory for supported laundry products and add optional products or services to orders.
+* View and manage laundry machines and their availability.
 
-**Stack:** Node.js 18+, Express 4, PostgreSQL 14+, and vanilla HTML/CSS/JavaScript.
-There is no front-end build step or framework. The Express service serves `public/`
-and the JSON API from the same origin.
+## Built with
 
-### Current features
+* **Frontend:** HTML, CSS, and vanilla JavaScript
+* **Backend:** Node.js and Express
+* **Database:** PostgreSQL
+* **Hosting:** Render
 
-- Seven-stage order workflow, searchable/filterable orders, Kanban board and status history.
-- Optional due dates and a dedicated completion timestamp for newly completed orders.
-- Customer directory and search, editable customer details, per-customer order history
-  and spending/paid/outstanding totals; repeat phone numbers reuse a customer.
-- Standalone customer creation from the Customers tab.
-- Separate Orders, Kanban, Inventory, Customers, Reports and Management tabs. Tab changes keep
-  each panel mounted so local search and form state are retained.
-- Service pricing by wash/dry/fold service and regular (8 kg) or Titan (10 kg) machines.
-- Configurable active service add-ons; each order stores the name and price snapshot used at checkout.
-- Machine name/type/capacity/availability management, capacity-based load planning,
-  and machine-load APIs. Load assignment is still API-only.
-- Add-on administration for names, prices and activation. Orders retain price snapshots.
-- Product stock levels, configurable low-stock thresholds, adjustments and movement history.
-- Partial and final payments by cash, GCash or card, with outstanding balances.
-- Dashboard totals and Sales & Collections reporting using Asia/Manila date boundaries.
-- Shared HTTP Basic Auth around static files and all API routes.
+## How it works
 
-## 2. Setup and installation
+LaundryLog uses a browser-based interface connected to an Express backend. The backend validates requests, applies order workflow and pricing rules, manages machine assignments and payments, and reads or writes records in PostgreSQL.
 
-### What to install first
+The application is deployed on Render, with the web interface and API available through the live site. The database stores customers, orders, machines, inventory, payments, and related records.
 
-| Tool | Version | Why |
-| --- | --- | --- |
-| Node.js | 18 or newer (built on 22) | Runs the server |
-| PostgreSQL | 14 or newer | Stores customers, orders, status history and payments |
+## Running it locally
 
-### Get the code
+### Requirements
+
+* Node.js and npm
+* PostgreSQL
+* Git
+
+### Setup
 
 ```bash
+# Clone the repository
 git clone https://github.com/rnzcrt/LaundryLog.git
 cd LaundryLog
-```
 
-### Install dependencies
-
-```bash
+# Install dependencies
 npm install
-```
 
-This installs `express`, `pg` and `dotenv`. There is no build step.
-
-### Environment and configuration
-
-Copy the example file and edit it:
-
-```bash
+# Create your local environment file
 cp .env.example .env
 ```
 
-| Variable | What it is | Example value |
-| --- | --- | --- |
-| `DATABASE_URL` | Postgres connection string (required, the server will not start without it) | `postgres://postgres:your_password_here@localhost:5432/laundrylog` |
+Configure the environment variables in `.env` using `.env.example` as a guide. Set the database connection to your local PostgreSQL instance. Never commit `.env` or share credentials.
+
+Create or prepare your local PostgreSQL database, then run the database setup or migration process documented in the repository. Start the application using the start command defined in `package.json`.
+
+```bash
+# Run project checks
+npm run check
+
+# Run tests
+npm test
+```
+
+The exact database setup and start commands depend on the scripts and migration instructions currently in the repository. Check `package.json` and the project setup documentation before running the app.
+
+## Environment variables
+
+Use `.env.example` as the source of truth for the environment variables required by your local or hosted deployment. These may include database connection, server configuration, and authentication settings.
+
+**Do not put passwords, database URLs, or other secrets in frontend code or commit them to GitHub.** Configure production secrets through the hosting provider's environment settings.
+
+## Project structure
+
+The project is organized around the Express application, frontend assets, database migrations, and automated tests.
+
+```text
+LaundryLog/
+├── src/          Backend application, routes, utilities, and validation
+├── public/       Frontend files (if served from this directory)
+├── migrations/   Database migrations (if stored separately)
+├── tests/        Automated tests
+├── docs/         Project proposal, design, reports, and documentation
+├── assets/       Screenshots and other project images
+├── .env.example  Example environment configuration
+├── package.json  Dependencies and project scripts
+└── README.md
+```
+
+*Adjust this tree to match the actual repository folders before submission.*
+
+## What I would do next
+
+* Improve reporting and operational insights based on real laundry shop needs.
+* Continue reviewing authentication, privacy, and deployment security before using the app with real customer data.
+* Plan for the Render database's free-tier expiry and migrate or upgrade the database hosting before it expires.
+
+## Author
+
+**Ranz Cuarto**
+6APSI — Holy Angel University
+GitHub: [rnzcrt](https://github.com/rnzcrt)
+
+## AI use
+
+![Built with AI assistance](https://img.shields.io/badge/built%20with-AI%20assistance-0b5fff)
+
+AI tools, including **ChatGPT**, were used to assist with parts of the development process, including implementation planning, code changes, validation, testing support, troubleshooting, and documentation. I reviewed and adapted the suggestions as part of building the project. See [AI-USAGE.md](AI-USAGE.md) for the detailed record of AI assistance, prompts, decisions, and related commits.
+
+## License
+
+Add the license used by this repository and ensure the corresponding `LICENSE` file is present. If you choose MIT, include the MIT license text and your name in that file.
 | `PORT` | Port the server listens on (optional, defaults to 3000) | `3000` |
 | `APP_AUTH_USER` | Basic Auth username (required) | Set your own value |
 | `APP_AUTH_PASSWORD` | Basic Auth password (required) | Set your own value |
