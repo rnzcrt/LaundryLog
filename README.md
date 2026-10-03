@@ -1,511 +1,318 @@
 # LaundryLog
 
-LaundryLog is a web-based laundry management system for laundry shop owners and staff to manage customer orders, machine assignments, payments, inventory, and daily operations.
+LaundryLog is a web-based laundry shop management system for shop owners and staff. It brings customer orders, machine assignments, payments, inventory, and daily reporting into one place.
 
-**Live site:** https://laundrylog.onrender.com
-**API health:** https://laundrylog.onrender.com/healthz
-**Demo video:** *Add your public Google Drive link after recording.*
+- **Live application:** https://laundrylog.onrender.com
+- **API liveness:** https://laundrylog.onrender.com/healthz
+- **Source code:** https://github.com/rnzcrt/LaundryLog
+- **Demo video:** Add the public Google Drive link after recording.
 
-![LaundryLog main screen](assets/screenshot.png)
+## 1. Project overview
 
-## What it does
+LaundryLog helps staff follow an order from drop-off to pickup while keeping machine loads, payment activity, and optional products or services connected to the order.
 
-* Create and manage laundry orders with customer and service details.
-* Track orders through **Waiting → Washing → Drying → Folding → Ready → Completed**.
-* Assign available washers and dryers while respecting machine capacity.
-* Split laundry loads to fit the selected machine's capacity.
-* Calculate service prices based on service type and load weight.
-* Record full or split payments and track outstanding balances.
-* View payment history, sales, and collections reports.
-* Manage customer records and search customer history.
-* Track inventory for supported laundry products and add optional products or services to orders.
-* View and manage laundry machines and their availability.
+### Main features
 
-## Built with
+- Create orders and connect them to customer records.
+- Track orders through Waiting, Washing, Drying, Folding, Ready, and Completed.
+- Assign washer and dryer loads while checking machine capacity and availability.
+- Split an order's weight into machine-sized loads.
+- Calculate prices from the selected service, machine type, and load requirements.
+- Record full or partial payments and view payment history and outstanding balances.
+- Manage customer details and view customer order history.
+- Manage machines, supported laundry products, and stock movements.
+- Add optional services or laundry products to an order.
+- View sales, collections, outstanding balances, and daily totals.
 
-* **Frontend:** HTML, CSS, and vanilla JavaScript
-* **Backend:** Node.js and Express
-* **Database:** PostgreSQL
-* **Hosting:** Render
+## 2. Technology
 
-## How it works
+| Part | Technology |
+| --- | --- |
+| Frontend | HTML, CSS, vanilla JavaScript |
+| Backend | Node.js, Express |
+| Database | PostgreSQL |
+| Hosting | Render |
 
-LaundryLog uses a browser-based interface connected to an Express backend. The backend validates requests, applies order workflow and pricing rules, manages machine assignments and payments, and reads or writes records in PostgreSQL.
+The Express application serves the frontend and JSON API from the same service. The browser sends requests to the API, and the backend validates input and applies business rules before reading or writing PostgreSQL.
 
-The application is deployed on Render, with the web interface and API available through the live site. The database stores customers, orders, machines, inventory, payments, and related records.
+## 3. Run LaundryLog locally
 
-## Running it locally
+Follow these steps to set up a local development copy.
 
-### Requirements
+### Step 1 — Install the requirements
 
-* Node.js and npm
-* PostgreSQL
-* Git
+Install Git, Node.js 18 or newer with npm, and PostgreSQL.
 
-### Setup
+### Step 2 — Clone the repository
 
-```bash
-# Clone the repository
-git clone https://github.com/rnzcrt/LaundryLog.git
-cd LaundryLog
+Open a terminal and run:
 
-# Install dependencies
-npm install
+    git clone https://github.com/rnzcrt/LaundryLog.git
+    cd LaundryLog
 
-# Create your local environment file
-cp .env.example .env
-```
+### Step 3 — Install dependencies
 
-Configure the environment variables in `.env` using `.env.example` as a guide. Set the database connection to your local PostgreSQL instance. Never commit `.env` or share credentials.
+    npm install
 
-Create or prepare your local PostgreSQL database, then run the database setup or migration process documented in the repository. Start the application using the start command defined in `package.json`.
+### Step 4 — Create and configure the environment file
 
-```bash
-# Run project checks
-npm run check
+    cp .env.example .env
 
-# Run tests
-npm test
-```
+Open the new .env file in your editor and set the values for your local machine. The example file contains placeholders only.
 
-The exact database setup and start commands depend on the scripts and migration instructions currently in the repository. Check `package.json` and the project setup documentation before running the app.
+| Variable | Purpose | Local example |
+| --- | --- | --- |
+| DATABASE_URL | PostgreSQL connection string | postgres://postgres:your_password_here@localhost:5432/laundrylog |
+| PORT | Port used by the server | 3000 |
+| APP_AUTH_USER | Shared Basic Auth username | Set your own value |
+| APP_AUTH_PASSWORD | Shared Basic Auth password | Set your own value |
 
-## Environment variables
+Keep .env private. Do not commit it to GitHub, include credentials in screenshots, or put secrets in frontend code. Use the hosting provider's environment settings for deployed values.
 
-Use `.env.example` as the source of truth for the environment variables required by your local or hosted deployment. These may include database connection, server configuration, and authentication settings.
+### Step 5 — Create a local database
 
-**Do not put passwords, database URLs, or other secrets in frontend code or commit them to GitHub.** Configure production secrets through the hosting provider's environment settings.
+Make sure PostgreSQL is running, then create a database:
 
-## Project structure
+    createdb laundrylog
 
-The project is organized around the Express application, frontend assets, database migrations, and automated tests.
+If your PostgreSQL installation uses a different username or port, adjust DATABASE_URL in .env to match it.
 
-```text
-LaundryLog/
-├── src/          Backend application, routes, utilities, and validation
-├── public/       Frontend files (if served from this directory)
-├── migrations/   Database migrations (if stored separately)
-├── tests/        Automated tests
-├── docs/         Project proposal, design, reports, and documentation
-├── assets/       Screenshots and other project images
-├── .env.example  Example environment configuration
-├── package.json  Dependencies and project scripts
-└── README.md
-```
+### Step 6 — Apply migrations and add sample data
 
-*Adjust this tree to match the actual repository folders before submission.*
+From the project folder, run:
 
-## What I would do next
+    npm run setup
 
-* Improve reporting and operational insights based on real laundry shop needs.
-* Continue reviewing authentication, privacy, and deployment security before using the app with real customer data.
-* Plan for the Render database's free-tier expiry and migrate or upgrade the database hosting before it expires.
+This runs the ordered database migrations and then adds sample data. The migration runner records completed migrations so they are not replayed. Sample seed data is intended for local development.
 
-## Author
+**Important:** Use a local or disposable database for setup and tests. Do not run npm run setup against production because it also inserts sample data. Back up and review the production database before applying migrations.
 
-**Ranz Cuarto**
-6APSI — Holy Angel University
+### Step 7 — Run project checks and tests
+
+    npm run check
+    npm test
+
+Database integration tests require a separate, disposable test database configured with TEST_DATABASE_URL. Never point it at production or at a database containing records you need to keep. Example:
+
+    createdb laundrylog_test
+    DATABASE_URL="postgres://postgres:your_password_here@localhost:5432/laundrylog_test" npm run setup
+    TEST_DATABASE_URL="postgres://postgres:your_password_here@localhost:5432/laundrylog_test" npm test
+
+The test suite should use only the disposable test database. Without TEST_DATABASE_URL, database integration tests are skipped.
+
+### Step 8 — Start the server
+
+    npm start
+
+Open http://localhost:3000 in your browser and sign in using the Basic Auth username and password configured in .env.
+
+For development with automatic server restarts when files change, use:
+
+    npm run dev
+
+### Step 9 — Check server health
+
+Open http://localhost:3000/healthz to check whether the web service is responding. This liveness endpoint does not check the database.
+
+The authenticated endpoint at http://localhost:3000/api/health checks database connectivity. If the database is unreachable, check that PostgreSQL is running and DATABASE_URL is correct.
+
+## 4. Use the application step by step
+
+### Step 1 — Create a laundry order
+
+1. Open the Orders view.
+2. Select **New Order**.
+3. Enter the customer's name and phone number.
+4. Select the requested service and enter the laundry weight.
+5. Select the applicable machine type where prompted.
+6. Review the order details and save.
+
+New orders enter the **Waiting** stage. Existing customer phone numbers connect repeat orders to the existing customer record.
+
+### Step 2 — Plan and assign machine loads
+
+1. Open the order details.
+2. Review the load plan for the order's weight.
+3. Choose an available washer for a washing load.
+4. Confirm the assignment and continue the order workflow.
+5. Assign a dryer when the order reaches the drying stage.
+
+Regular machines have an 8 kg capacity and Titan machines have a 10 kg capacity. Loads are planned and validated against machine capacity and availability. Do not assign a load to a machine that is unavailable or under maintenance.
+
+### Step 3 — Update the order status
+
+Move the order through the stages in sequence:
+
+**Waiting → Washing → Drying → Folding → Ready → Completed**
+
+The backend validates status changes, so the interface alone is not relied on to enforce the workflow. Older records may contain the legacy status **new**; move these to Waiting before continuing through the current stages.
+
+### Step 4 — Record payments
+
+1. Open the order details.
+2. Enter the amount received.
+3. Select the payment method available in the form.
+4. Save the payment.
+5. Review the payment history and remaining balance.
+
+An order can have multiple payment records. LaundryLog tracks whether an order is unpaid, partially paid, or paid, and checks new payments against the outstanding balance.
+
+### Step 5 — Add optional products or services
+
+When an order is ready to be completed, review the optional add-ons presented by the application. Select any applicable service or laundry product, enter the quantity when requested, and confirm—or skip add-ons if none are needed. Add-ons update the order total while preserving payment history. Historical order add-on names and prices are stored as snapshots.
+
+### Step 6 — Manage customers, machines, and inventory
+
+- **Customers:** Browse the customer directory, search for a customer, update details, and review order history.
+- **Machines:** View machine status and manage machine details, capacity, type, and availability.
+- **Inventory:** Manage supported laundry products and record stock movements. Verify quantities before saving.
+
+### Step 7 — Review reports
+
+Open the Reports view to review sales, collections, outstanding balances, and daily totals for a selected date range. Sales and collections are different measures: sales reflect order value, while collections reflect payments actually received.
+
+## 5. Pricing overview
+
+Base service prices are defined in the application code rather than through a business-settings screen.
+
+| Service | Regular | Titan |
+| --- | ---: | ---: |
+| Wash | ₱70 per load (up to 8 kg) | ₱90 per load (up to 10 kg) |
+| Dry | ₱90 per load (up to 8 kg) | ₱110 per load (up to 10 kg) |
+
+Wash & Fold and Fold Only include the base folding service. An optional additional Folding add-on is ₱20. Optional laundry-product add-ons have configured prices shown in the application. Saved order totals and add-on prices are retained as historical records when the catalog changes.
+
+## 6. API overview
+
+Staff-facing API routes use HTTP Basic Authentication. The /healthz liveness endpoint is public and returns no database details.
+
+| Method | Endpoint | Purpose |
+| --- | --- | --- |
+| GET | /api/health | Check database connectivity |
+| GET, POST | /api/orders | List or create orders |
+| GET | /api/orders/:id | Retrieve an order and related history |
+| PATCH | /api/orders/:id/status | Advance an order's status |
+| POST | /api/orders/:id/payment | Record a payment |
+| GET | /api/orders/:id/load-plan | Calculate a machine-capacity load plan |
+| POST | /api/orders/:id/loads | Assign a load to a machine |
+| PATCH | /api/orders/:orderId/loads/:loadId/status | Update a machine load's status |
+| GET, POST, PATCH | /api/machines and /api/machines/:id | View and manage machines |
+| GET | /api/customers and /api/customers/:id | View customers and customer history |
+| POST, PATCH | /api/customers and /api/customers/:id | Create or update customer records |
+| GET, POST, PATCH | /api/addons | View and manage optional add-ons |
+| GET, POST, PATCH | /api/products | View and manage inventory products |
+| POST, GET | /api/products/:id/movements | Record or view inventory movements |
+| GET | /api/reports/summary | Retrieve sales and collections summaries |
+
+The orders endpoint supports status and customer-search filters. The load-plan endpoint accepts a machine capacity value. The reports endpoint accepts from and to dates. Refer to the route files in src/routes/ for exact request fields, validation rules, and response shapes.
+
+## 7. Project structure
+
+    LaundryLog/
+    ├── db/
+    │   ├── migrations/       Ordered database migrations
+    │   ├── migrate.js        Migration runner
+    │   ├── run-migrations.js Migration command
+    │   ├── run-seed.js       Sample-data command
+    │   └── seed.sql          Sample data
+    ├── public/
+    │   ├── index.html        Application page
+    │   ├── styles.css        Layout and component styles
+    │   └── app.js            Browser-side application logic
+    ├── scripts/
+    │   └── check.js          Project preflight checks
+    ├── src/
+    │   ├── app.js            Express app configuration
+    │   ├── server.js         Server entry point
+    │   ├── db.js             PostgreSQL helpers
+    │   ├── middleware/       Authentication and error handling
+    │   ├── routes/           API route handlers
+    │   ├── utils/            Pricing, workflow, and load planning
+    │   └── validators/       Server-side request validation
+    ├── docs/
+    │   ├── assets/           Mockup screenshots
+    │   └── design-system/    Design-system reference PDFs
+    ├── .env.example          Environment-variable template
+    ├── AI-USAGE.md           AI assistance record
+    ├── LICENSE               Project license
+    └── README.md
+
+## 8. Screenshots and design references
+
+Mockup screenshots are stored in docs/assets/.
+
+### Desktop
+
+![Order list mockup](docs/assets/mockup-order-list.png)
+
+![New order mockup](docs/assets/mockup-new-order.png)
+
+![Order detail mockup](docs/assets/mockup-order-detail.png)
+
+![Machine management mockup](docs/assets/mockup-machines.png)
+
+![Customer management mockup](docs/assets/mockup-customers.png)
+
+![Inventory management mockup](docs/assets/mockup-inventory.png)
+
+![Reports mockup](docs/assets/mockup-reports.png)
+
+### Mobile
+
+![Mobile order list mockup](docs/assets/mockup-mobile-order-list.png)
+
+![Mobile new order mockup](docs/assets/mockup-mobile-new-order.png)
+
+![Mobile order detail mockup](docs/assets/mockup-mobile-order-detail.png)
+
+Design references are available in docs/design-system/. Mockups are design references; check the live application to see the currently implemented interface.
+
+## 9. Deployment notes
+
+The live demo is hosted on Render. Service availability and account-specific configuration can change, so verify the Render dashboard before relying on it.
+
+Typical service settings:
+
+- **Build command:** npm install
+- **Start command:** npm start
+- **Node.js:** version 18 or newer
+- **Environment variables:** DATABASE_URL, APP_AUTH_USER, APP_AUTH_PASSWORD; the host may provide PORT
+- **Health check:** /healthz
+
+Set secrets through the hosting provider's environment settings, not in source code. Use HTTPS to protect Basic Auth credentials in transit. Back up and review the production database before applying migrations. Do not use npm run setup against production because it also seeds sample data. Confirm the current database plan, backup arrangements, and expiry or upgrade requirements in the hosting dashboard.
+
+## 10. Security and privacy notes
+
+- The application uses shared HTTP Basic Authentication rather than individual staff accounts and roles.
+- Keep environment files, passwords, database URLs, and real customer information out of the repository and public screenshots.
+- Backend validation is used for important order, machine, payment, add-on, and inventory operations.
+- Use HTTPS for deployed access.
+- Use fictional or anonymized data in demonstrations and course submissions.
+- This is a course project and should not be treated as a fully audited commercial system. Review the separate security and privacy documentation before using real customer data.
+
+## 11. Known limitations and future improvements
+
+- Staff share one Basic Auth login; individual accounts and role-based permissions are not available.
+- Payment corrections and refunds do not have a dedicated workflow.
+- Order status changes move forward through the workflow; there is no general undo flow.
+- There is no pagination for large order lists.
+- Base service prices are code-defined rather than editable in a business-settings page.
+- Hosting and database plan details should be rechecked in the provider dashboard.
+
+Potential future work includes payment corrections with an audit trail, browser-level regression tests, improved reporting, and more complete account and permission management.
+
+## 12. Author and course
+
+**Ranz Cuarto**  
+6APSI — Holy Angel University  
 GitHub: [rnzcrt](https://github.com/rnzcrt)
 
-## AI use
+## 13. AI use
 
 ![Built with AI assistance](https://img.shields.io/badge/built%20with-AI%20assistance-0b5fff)
 
-AI tools, including **ChatGPT**, were used to assist with parts of the development process, including implementation planning, code changes, validation, testing support, troubleshooting, and documentation. I reviewed and adapted the suggestions as part of building the project. See [AI-USAGE.md](AI-USAGE.md) for the detailed record of AI assistance, prompts, decisions, and related commits.
+AI tools, including ChatGPT, assisted with parts of planning, implementation, testing support, troubleshooting, and documentation. The project author is responsible for reviewing and understanding the submitted work. See [AI-USAGE.md](AI-USAGE.md) for the AI-use record; review its reconstructed entries and complete any remaining reflection sections so they accurately represent the actual work.
 
-## License
+## 14. License
 
-Add the license used by this repository and ensure the corresponding `LICENSE` file is present. If you choose MIT, include the MIT license text and your name in that file.
-| `PORT` | Port the server listens on (optional, defaults to 3000) | `3000` |
-| `APP_AUTH_USER` | Basic Auth username (required) | Set your own value |
-| `APP_AUTH_PASSWORD` | Basic Auth password (required) | Set your own value |
-
-`.env` is listed in `.gitignore`. Real credentials are never committed; the example
-file only contains placeholders. Keep `APP_AUTH_PASSWORD` private and use HTTPS in
-deployment; Basic Auth credentials are encoded, not encrypted, without TLS.
-
-### Create and seed the database
-
-Create the database once:
-
-```bash
-createdb laundrylog
-```
-
-Then apply the versioned migrations and add sample rows:
-
-```bash
-npm run migrate      # applies db/migrations in numerical order
-npm run seed         # adds sample data; safe to rerun
-# or run both:
-npm run setup
-```
-
-The runner records each migration name, version, checksum and application time in
-`laundrylog_migration_history`. Each migration and its history entry commit in one
-transaction. Re-running it skips completed migrations and rejects changed migration
-files. A populated database without migration history is left untouched by default.
-For an existing database, first take a backup. The runner refuses to guess the
-schema by default. `--baseline` verifies a supported existing LaundryLog schema and
-key workflow/payment constraints, records the detected migration level, then applies
-only later migrations:
-
-```bash
-npm run migrate -- --baseline
-```
-
-For the known legacy state through 007 it applies 008–010; for states through 008
-or 009 it applies only the remaining migrations. A current schema is simply recorded.
-It does not replay old migrations or intentionally alter application rows. Existing
-completed orders keep a null `completed_at` because their historical completion time
-cannot be reconstructed safely. Baseline verification is not a replacement for a
-backup or manual review. Never baseline production without explicit approval. Do not
-run `db/schema.sql`: it is a retired guard file and deliberately exits.
-
-`db/seed.sql` adds sample customers, orders, partial payments, machine loads, products,
-stock movements, and the optional Folding/laundry-product add-on catalog. Sample markers
-prevent duplicate rows; add-ons are upserted by their unique names and can be managed
-from the Management tab afterward.
-
-### Check the project before you run it
-
-```bash
-npm run check
-npm test
-```
-
-This preflight script confirms required files exist and every JavaScript file passes
-a syntax check. `npm test` runs unit tests and HTTP/API checks. Database integration
-tests are skipped unless `TEST_DATABASE_URL` is set. They create and update fixture
-records, so point them only at a disposable database initialized with `npm run setup`;
-they never fall back to `DATABASE_URL` from `.env`:
-
-```bash
-DATABASE_URL="postgres://postgres:password@localhost:5432/laundrylog_test" npm run setup
-TEST_DATABASE_URL="postgres://postgres:password@localhost:5432/laundrylog_test" npm test
-```
-
-A healthy preflight prints a count of required files and JavaScript syntax checks.
-
-```
-Preflight passed: required files present; JavaScript files passed syntax checks.
-```
-
-## 3. How to run it
-
-```bash
-npm start
-```
-
-The terminal prints `LaundryLog is running at http://localhost:3000`. Open that
-address and you should see the LaundryLog header, the status filter tabs, and the
-seeded orders as cards. (`npm run dev` does the same but restarts on file changes.)
-
-For a liveness check, open <http://localhost:3000/healthz>; it returns `ok` without
-checking the database. To check database connectivity, request
-<http://localhost:3000/api/health> with the configured Basic Auth credentials. A
-healthy database check returns:
-
-```json
-{ "status": "ok", "database": "connected" }
-```
-
-If it returns `"database": "unreachable"`, Postgres is not running or `DATABASE_URL`
-is wrong.
-
-## 4. Deployment preparation (Render)
-
-This checkout has no `render.yaml`; the actual Render service, region, plan, branch,
-health-check configuration, and database status must be verified in the Render
-dashboard before deployment. The following requirements describe this application,
-not a claim that a hosted service is currently active:
-
-| Setting | Project requirement |
-| --- | --- |
-| Build command | `npm install` (there is no frontend build step) |
-| Start command | `npm start` |
-| Runtime | Node.js 18 or newer (`package.json` declares this; tested locally with Node 22) |
-| Required environment | `DATABASE_URL`, `APP_AUTH_USER`, `APP_AUTH_PASSWORD`; Render supplies `PORT` |
-| Migration process | Run `npm run migrate` after a verified backup; do not use `npm run setup` for a production upgrade because it also seeds sample data |
-| Liveness check | `/healthz` returns only `ok`; it does not require Basic Auth or reveal database state |
-
-`/api/health` checks PostgreSQL but requires Basic Auth. Configure a Render health
-check to use `/healthz` and keep `/api/health` for authenticated database diagnostics.
-The server does not run migrations at startup. Use HTTPS to protect Basic Auth
-credentials in transit.
-
-Before deploying, verify the current Render service and database status/expiry, confirm
-the service points to the intended database URL, take and verify a backup, review
-pending migration SQL, and test restore into a separate database. This repository
-review cannot confirm account-specific settings or production database availability.
-
-## 5. Features and usage
-
-### The main flow
-
-1. Staff press **+ New order** and enter customer details, service and weight.
-   Wash, dry and fold services use kilograms. Price is calculated from service,
-   machine type and number of loads; the browser does not submit a custom price.
-2. Saving the order places it in **Waiting**. If the phone number has been seen
-   before, the order is attached to that existing customer instead of creating a
-   duplicate.
-3. Move orders one stage at a time: `waiting → washing → drying → folding → ready → completed`.
-   Older orders still marked `new` can move once to `waiting`.
-   Each change is appended to the order's timeline with a timestamp and optional note.
-4. Plans split weight across loads within selected machine capacity (8 kg regular,
-   10 kg Titan). Assigning a load checks machine capacity, availability and maintenance.
-5. Record one or more payments. Amounts are checked in cents against the remaining
-   balance; the order detail shows the payment history and outstanding amount.
-
-### API endpoints
-
-All staff-facing API endpoints and the static staff page require HTTP Basic Auth;
-`/healthz` is the exception and returns only a plain liveness response. Browsers
-prompt for the configured credentials. With `curl`, pass
-`-u "$APP_AUTH_USER"`; curl prompts for the password.
-
-| Method | Path | What it does |
-| --- | --- | --- |
-| `GET` | `/api/health` | Reports whether the server can reach the database |
-| `GET` | `/healthz` | Unauthenticated liveness check for hosting; reveals no database details |
-| `GET` | `/api/orders` | Lists orders, newest first. Optional `?status=` (`new`, `waiting`, `washing`, `drying`, `folding`, `ready`, `completed`) and `?q=` to search customer name or phone |
-| `POST` | `/api/orders` | Creates an order, creating the customer if the phone is new. Returns `201` |
-| `GET` | `/api/orders/:id` | One order with customer, status timeline, payment history, machine loads and add-on snapshots; payment status is `UNPAID`, `PARTIAL` or `PAID` |
-| `PATCH` | `/api/orders/:id/status` | Moves the order to the next status. Returns `409` if the step is not allowed |
-| `POST` | `/api/orders/:id/payment` | Records payment for an order. Returns `201` |
-| `GET` | `/api/orders/:id/load-plan?capacity_kg=` | Splits a weighted order into machine-sized loads; capacity accepts 0.1–100 kg with at most two decimal places |
-| `POST` | `/api/orders/:id/loads` | Assigns a load to a machine |
-| `PATCH` | `/api/orders/:orderId/loads/:loadId/status` | Moves a machine load queued → running → completed |
-| `GET`, `POST`, `PATCH` | `/api/machines` and `/api/machines/:id` | Lists/adds machines and updates names, types, kind, capacity or availability; configuration changes are rejected while queued/running loads exist |
-| `GET` | `/api/customers` | Customer directory with order counts and open-order counts |
-| `GET` | `/api/customers/:id` | One customer and their order history |
-| `POST` | `/api/customers` | Adds a customer without starting an order |
-| `PATCH` | `/api/customers/:id` | Updates customer name, phone or notes |
-| `GET`, `POST`, `PATCH` | `/api/addons` | Lists, creates and updates service add-ons and prices |
-| `GET`, `POST`, `PATCH` | `/api/products` | Lists, creates and updates inventory products (`GET` supports `?q=` and `?low_stock=true`) |
-| `POST`, `GET` | `/api/products/:id/movements` | Records or lists stock movements |
-| `GET` | `/api/reports/summary?from=YYYY-MM-DD&to=YYYY-MM-DD` | Sales, collections, outstanding and daily totals (maximum 366 days) |
-
-Current `load_type` values are `wash_fold`, `wash_only`, `dry_only` and `fold_only`;
-`method` is `cash`, `gcash` or `card`. The seven order statuses are `new`, `waiting`,
-`washing`, `drying`, `folding`, `ready` and `completed`.
-
-Validation limits include customer/order names up to 120 characters, phone values up
-to 40 characters, notes up to 500 characters, weights up to 100 kg, and machine
-capacities from 0.1 to 100 kg with at most two decimal places. Payment and add-on
-prices accept at most two decimal places; add-on quantities are whole numbers from 1
-to 100.
-
-Example — logging a drop-off (curl prompts for the password):
-
-```bash
-curl -X POST http://localhost:3000/api/orders \
-  -u "$APP_AUTH_USER" \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Maria Santos","phone":"0917-555-0142","load_type":"wash_fold","weight_kg":4.5,"wash_machine_type":"regular","dry_machine_type":"regular"}'
-```
-
-Example — moving it along:
-
-```bash
-curl -X PATCH http://localhost:3000/api/orders/1/status \
-  -u "$APP_AUTH_USER" \
-  -H "Content-Type: application/json" \
-  -d '{"status":"washing"}'
-```
-
-Example — listing only what is ready for pickup:
-
-```bash
-curl -u "$APP_AUTH_USER" \
-  "https://your-service.onrender.com/api/orders?status=ready"
-```
-
-### What the API does when something is wrong
-
-| Situation | Status | Response |
-| --- | --- | --- |
-| Missing or invalid fields | `400` | `{ "error": "Validation failed", "details": [{ "field": "weight_kg", "message": "..." }] }` |
-| Unknown order or customer id | `404` | `{ "error": "No order with id 99" }` |
-| Skipping a status step, or repeating one | `409` | `{ "error": "An order that is new can only move to waiting" }` |
-| Order payment exceeds remaining balance | `400` | `{ "error": "Payment exceeds the remaining balance ..." }` |
-| Postgres not running | `503` | `{ "error": "Database unavailable", ... }` |
-
-## 6. Project structure
-
-```
-.
-├── db/
-│   ├── migrations/         additive, ordered schema migrations
-│   ├── migrate.js          ordered runner with checksums and history
-│   ├── run-migrations.js   migration CLI
-│   ├── run-seed.js         transactional seed CLI
-│   ├── schema.sql          retired guard file; do not use
-│   └── seed.sql            repeat-safe sample data
-├── public/                 the staff-facing page, served as static files
-│   ├── index.html
-│   ├── styles.css          design tokens and component styles
-│   └── app.js              fetches the API and renders the list, form and detail
-├── scripts/
-│   └── check.js            preflight: required files + JS syntax (npm run check)
-├── src/
-│   ├── server.js           starts the server, closes the pool on shutdown
-│   ├── app.js              Express app: JSON, logging, static files, routers
-│   ├── db.js               connection pool, query helper, transaction helper
-│   ├── middleware/
-│   │   ├── httpError.js    HttpError class and async route wrapper
-│   │   └── errorHandler.js the one place errors become responses
-│   ├── routes/
-│   │   ├── orders.js       orders, payments and machine loads
-│   │   ├── customers.js    customer directory/history
-│   │   ├── machines.js     machine listing
-│   │   ├── products.js     inventory and movements
-│   │   ├── reports.js      sales and collections
-│   │   └── addons.js       configurable service add-ons
-│   ├── utils/              pricing and load splitting
-│   └── validators/
-│       └── orderValidators.js   input rules and workflow transitions
-├── docs/screenshots/       screenshots used in this README
-└── .env.example
-```
-
-### Data model
-
-- **customers** — name, phone (unique), notes.
-- **orders** — belongs to a customer; service, weight, calculated historical price,
-  status and note.
-- **order_status_history** — one row per status change, giving each order a timeline
-  rather than just a current value.
-- **payments** — one or more payments per order, each with amount, method and time.
-- **service_addons** and **order_addons** — configurable add-on prices plus
-  order-time name/price snapshots.
-- **machines** and **machine_loads** — physical equipment and order loads with
-  capacity and queued/running/completed state.
-- **products** and **product_movements** — stock level, threshold and an append-only
-  record of additions, usage and adjustments.
-
-### Pricing and money
-
-Base prices are code constants (there is no pricing settings UI): regular wash ₱70,
-Titan wash ₱90, regular dry ₱90, Titan dry ₱110, and folding ₱20. Wash and dry prices
-are charged once per selected service per order; extra machine cycles do not add service
-fees. Regular machines are 8 kg and Titan machines are 10 kg; capacity determines load
-splitting and machine validation. Wash + dry + fold includes one ₱20 folding service
-charge. The configurable `Folding` add-on is an additional optional service for any
-order type; laundry-product add-ons are also optional and support quantities. Existing
-order prices and add-on snapshots are stored and are not recalculated when configuration
-changes. Payments are recorded in pesos to two decimal places and checked against the
-remaining balance.
-Add-on prices can be managed from the Management tab or `/api/addons`; changing or
-deactivating an add-on affects future orders only. Historical order totals and
-line-item snapshots remain unchanged. Standalone customer creation is available in
-the Customers tab; repeat phone numbers are rejected with a duplicate-record message.
-
-### Backup and recovery
-
-Before a production migration, create a custom-format backup and confirm the command
-completed:
-
-```bash
-pg_dump --format=custom --no-owner --file="laundrylog-$(date +%F).dump" "$DATABASE_URL"
-```
-
-Restore into a **new empty database** first, then verify tables and data before
-considering a recovery action. Do not restore over the live database as a test:
-
-```bash
-createdb laundrylog_restore
-pg_restore --no-owner --dbname="postgres://localhost/laundrylog_restore" laundrylog-backup.dump
-```
-
-Keep backup files private because they contain customer and payment data. The app
-does not currently schedule backups or validate restore files automatically.
-
-## 7. Screenshots
-
-**An order-list screenshot** captured previously; it does not verify the current
-hosted service or database:
-
-![Previously captured LaundryLog order list](https://raw.githubusercontent.com/rnzcrt/LaundryLog/main/docs/screenshots/order-list.png)
-
-**A previous Render web-service screenshot**; current service status is unverified:
-
-![Render web service deploys](https://raw.githubusercontent.com/rnzcrt/LaundryLog/main/docs/screenshots/render-deploys.png)
-
-**A previous Render database screenshot**; current database status is unverified:
-
-![Render PostgreSQL database info](https://raw.githubusercontent.com/rnzcrt/LaundryLog/main/docs/screenshots/render-database.png)
-
-## 8. Known issues
-
-Honest state of things:
-
-- **Basic Auth is shared by all staff.** Configure both `APP_AUTH_USER` and
-  `APP_AUTH_PASSWORD`; individual accounts and roles are not supported.
-- **Thin hardening.** The app uses shared Basic Auth and security headers, but has no
-  per-staff accounts/roles or rate limiting. Customer, order, product and add-on text
-  fields are bounded by API validation; use HTTPS in deployment.
-- **Database integration tests write fixture records.** Set `TEST_DATABASE_URL` to
-  a fresh disposable database; tests are skipped without it.
-- **Load assignment remains API-only.** Machine name, kind, type, capacity and
-  availability, plus add-on prices/activation, can be managed in the Management tab.
-  Machine availability can be set to maintenance, but there is no separate
-  maintenance work-order workflow.
-- **No in-app business settings.** Base service prices are constants in
-  `src/utils/pricing.js`; environment variables configure the database and shared auth.
-- **Hosted deployment details need manual verification.** This repository has no
-  Render-as-code configuration, and this review did not access the Render account or
-  production database.
-- **Status only moves forward.** There is no way to undo a mistaken status change,
-  which will bite a real user eventually. A correction route with a reason field is
-  planned.
-- **Payments support partial payments.** Corrections and refunds do not yet have a
-  dedicated workflow, and pickup is not blocked by an outstanding balance.
-- **No pagination.** `GET /api/orders` returns everything. That is fine with seven
-  seeded orders and wrong after a few hundred.
-- **The frontend is plain JavaScript,** not React. The page is served straight from
-  `public/`, which keeps the focus on the API for now.
-- **Screenshots are incomplete.** The new-order form and the order detail/timeline
-  view have not been captured yet.
-
-## 9. Architecture
-
-One Express service serves the staff page (plain HTML, CSS and JavaScript from
-`public/`) and the JSON API under `/api`. The browser talks to that same service, so
-there is no separate front-end host and no CORS configuration. The API reads and
-writes PostgreSQL through the connection pool in `src/db.js`, using the
-`DATABASE_URL` environment variable. The production provider, database location and
-live service status have not been verified in this review. Every query passes its
-values as parameters, not inside the SQL text.
-
-## 10. Troubleshooting
-
-- **Startup reports missing `DATABASE_URL`:** copy `.env.example` to `.env`, set a
-  local PostgreSQL URL, then start the server again.
-- **Requests return `401`:** use the configured Basic Auth username and password;
-  static files and staff API routes are protected. `/healthz` is a public liveness
-  endpoint and does not reveal database state.
-- **Requests return `500 Authentication is not configured`:** both `APP_AUTH_USER`
-  and `APP_AUTH_PASSWORD` must be set in the server environment.
-- **Health returns `503`:** check PostgreSQL is reachable from the app and the
-  `DATABASE_URL` points at the intended database.
-- **Migration refuses an existing database without history:** back it up, then verify
-  it matches a supported LaundryLog schema state before using `npm run migrate -- --baseline`.
-- **Database tests are skipped:** set `TEST_DATABASE_URL` to a disposable database
-  initialized with `npm run setup`. Without it, integration tests skip and do not
-  connect to `DATABASE_URL`; HTTP tests still need permission to bind a local port.
-
-## 11. What I would do next
-
-- Add payment correction/refund handling with an audit trail and expand API tests.
-- Add browser-level regression coverage for tabs and inventory forms.
-- Verify the current hosting provider's database backup, retention and upgrade
-  requirements in its dashboard; add undoable status changes with an audit reason.
-
-## 12. AI use
-
-![Built with AI assistance](https://img.shields.io/badge/built%20with-AI%20assistance-0b5fff)
-
-AI assistance has been used for project reviews, documentation and application
-implementation during this work. Earlier Claude assistance is described in
-[AI-USAGE.md](AI-USAGE.md).
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file.
