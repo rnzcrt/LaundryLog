@@ -190,16 +190,18 @@ The following backend changes were personally implemented by me. Claude provided
 - **Related files:** `src/utils/orderWorkflow.js`, pricing and order route logic, add-on catalog validation, and related tests. These files were AI-assisted; this entry describes my requirements, decisions, review, and verification rather than claiming sole authorship of their code.
 - **Related commit:** https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5
 
-### AI-assisted part I understand best — Order workflow validation
+### Backend components I understand
 
-- **File:** src/utils/orderWorkflow.js
+**Basic Authentication Middleware (`src/middleware/basicAuth.js`)**
+
+This middleware secures the LaundryLog API using HTTP Basic Authentication. It verifies that server-side credentials are configured, extracts and decodes the request's `Authorization` header, and compares the submitted username and password against the configured values. Valid credentials allow the request to proceed through `next()`, while invalid credentials return `401 Unauthorized`. If the server-side credentials are missing, it returns `500 Internal Server Error`.
+
+**Order Workflow Utility (`src/utils/orderWorkflow.js`)**
+
+The order workflow utility centralizes key business rules to maintain data integrity before database operations. It determines the required machine for each order stage, validates machine assignments and weight limits, and checks completion add-on selections. These validations help prevent invalid or incomplete order data from being processed.
+
 - **Related commit:** https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5
-- **What the code does:** This utility provides three workflow-related functions:
-  - requiredMachineKind(loadType, destination) identifies whether a washer or dryer is required for a supported load type and destination stage.
-  - validateMachineAssignments(assignments, totalWeightKg) checks the assignment list, machine IDs, duplicate assignments, valid load weights, and whether assigned weights add up to the order's total weight.
-  - validateCompletionChoices(body) checks whether add-ons were selected or explicitly skipped, and validates add-on IDs and quantities.
-- **What AI contributed:** ChatGPT assisted with the workflow implementation and related backend, interface, and test changes.
-- **What I reviewed or changed:** I defined the required order stages and operational rules, then reviewed the implementation against the laundry process. I checked that workflow enforcement belonged on the backend and reviewed related tests and deployed behavior. I can explain the three functions above using the current source file.
+- **AI contribution:** ChatGPT assisted with the order workflow utility and related backend, interface, and test changes. I defined the operational requirements and reviewed the implementation against the laundry process.
 
 ---
 
