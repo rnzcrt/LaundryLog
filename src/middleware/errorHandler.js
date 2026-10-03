@@ -23,6 +23,14 @@ function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-va
     });
   }
 
+  // express.json() reports bad bodies with its own error types and a 4xx status.
+  if (err.type === 'entity.parse.failed') {
+    return res.status(400).json({ error: 'Request body is not valid JSON' });
+  }
+  if (err.type === 'entity.too.large') {
+    return res.status(413).json({ error: 'Request body is too large' });
+  }
+
   // Postgres error codes: https://www.postgresql.org/docs/current/errcodes-appendix.html
   switch (err.code) {
     case '23505': // unique_violation

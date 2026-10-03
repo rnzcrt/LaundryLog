@@ -134,3 +134,22 @@ test('payment validation rejects fractions smaller than one cent', () => {
     method: 'gcash',
   });
 });
+
+test('error handler returns 400 for malformed JSON and 413 for oversized bodies', () => {
+  const quiet = () => {};
+  const originalError = console.error;
+  console.error = quiet;
+  try {
+    const malformed = responseStub();
+    errorHandler(Object.assign(new SyntaxError('bad json'), { type: 'entity.parse.failed' }), {}, malformed, quiet);
+    assert.equal(malformed.statusCode, 400);
+    assert.deepEqual(malformed.body, { error: 'Request body is not valid JSON' });
+
+    const tooLarge = responseStub();
+    errorHandler(Object.assign(new Error('too large'), { type: 'entity.too.large' }), {}, tooLarge, quiet);
+    assert.equal(tooLarge.statusCode, 413);
+    assert.deepEqual(tooLarge.body, { error: 'Request body is too large' });
+  } finally {
+    console.error = originalError;
+  }
+});

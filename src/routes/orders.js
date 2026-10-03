@@ -1,9 +1,9 @@
-"use strict";
+'use strict';
 
-const express = require("express");
-const db = require("../db");
-const { HttpError, asyncHandler } = require("../middleware/httpError");
-const { calculateOrderPrice } = require("../utils/pricing");
+const express = require('express');
+const db = require('../db');
+const { HttpError, asyncHandler } = require('../middleware/httpError');
+const { calculateOrderPrice } = require('../utils/pricing');
 const {
   STATUSES,
   parseId,
@@ -11,8 +11,8 @@ const {
   validateStatusChange,
   validatePayment,
   validateMachineLoad,
-} = require("../validators/orderValidators");
-const { splitLoadWeight } = require("../utils/loadSplitter");
+} = require('../validators/orderValidators');
+const { splitLoadWeight } = require('../utils/loadSplitter');
 const {
   requiredMachineKind,
   validateMachineAssignments,
@@ -56,24 +56,38 @@ const ORDER_SELECT = `
   ) pay ON true
 `;
 
+// Columns returned whenever a single machine load is sent back to the client.
+const LOAD_COLUMNS = `id, order_id, machine_id, load_number, weight_kg,
+                      status, started_at, completed_at, notes, created_at`;
+
+// What a single load may move to next.
+const LOAD_TRANSITIONS = {
+  queued: ['running'],
+  running: ['completed'],
+  completed: [],
+};
+
+// Single-stage orders can only use one kind of machine.
+const EXCLUSIVE_MACHINE_KIND = { wash_only: 'washer', dry_only: 'dryer' };
+
 /**
  * GET /api/orders
  * Optional query: ?status=washing  ?q=maria
  * The filter tabs on the order list use this.
  */
 router.get(
-  "/",
+  '/',
   asyncHandler(async (req, res) => {
     const { status, q } = req.query;
     const conditions = [];
     const params = [];
 
-    if (status && status !== "all") {
+    if (status && status !== 'all') {
       if (!STATUSES.includes(status)) {
-        throw new HttpError(400, "Validation failed", [
+        throw new HttpError(400, 'Validation failed', [
           {
-            field: "status",
-            message: `status must be one of: all, ${STATUSES.join(", ")}`,
+            field: 'status',
+            message: `status must be one of: all, ${STATUSES.join(', ')}`,
           },
         ]);
       }
@@ -81,14 +95,14 @@ router.get(
       conditions.push(`o.status = $${params.length}`);
     }
 
-    if (q && String(q).trim() !== "") {
+    if (q && String(q).trim() !== '') {
       params.push(`%${String(q).trim()}%`);
       conditions.push(
         `(c.name ILIKE $${params.length} OR c.phone ILIKE $${params.length})`,
       );
     }
 
-    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
     const { rows } = await db.query(
       `${ORDER_SELECT} ${where} ORDER BY o.created_at DESC`,
       params,
@@ -103,9 +117,9 @@ router.get(
  * One order with its customer, its status timeline and its payment.
  */
 router.get(
-  "/:id",
+  '/:id',
   asyncHandler(async (req, res) => {
-    const id = parseId(req.params.id, "order id");
+    const id = parseId(req.params.id, 'order id');
 
     const { rows } = await db.query(`${ORDER_SELECT} WHERE o.id = $1`, [id]);
     if (rows.length === 0) {
@@ -160,7 +174,7 @@ router.get(
  * half-written order can never be left behind.
  */
 router.post(
-  "/",
+  '/',
   asyncHandler(async (req, res) => {
     const input = validateNewOrder(req.body);
 
@@ -265,7 +279,7 @@ router.post(
 
       await client.query(
         "INSERT INTO order_status_history (order_id, status, note) VALUES ($1, $2, $3)",
-        [orderId, "waiting", "Order received"],
+        [orderId, 'waiting', 'Order received'],
       );
 
       const full = await client.query(`${ORDER_SELECT} WHERE o.id = $1`, [
@@ -286,6 +300,18 @@ router.post(
   }),
 );
 
+const WASHER_LOAD_TYPES = ['wash_fold', 'wash_only'];
+const DRYER_LOAD_TYPES = ['wash_fold', 'dry_only'];
+
+/** Weights are compared in hundredths of a kilo so decimals never cause false mismatches. */
+function toCentiKg(weight) {
+  return Math.round(Number(weight) * 100);
+}
+
+function uniqueNumbers(values) {
+  return [...new Set(values.map(Number))];
+}
+
 async function finishMachineStage(client, orderId, machineKind) {
   const completed = await client.query(
     `UPDATE machine_loads ml
@@ -296,7 +322,7 @@ async function finishMachineStage(client, orderId, machineKind) {
      RETURNING ml.machine_id`,
     [orderId, machineKind],
   );
-  const machineIds = [...new Set(completed.rows.map((row) => Number(row.machine_id)))];
+  const machineIds = uniqueNumbers(completed.rows.map((row) => row.machine_id));
   if (machineIds.length) {
     await client.query(
       `UPDATE machines m SET status = 'available'
@@ -308,14 +334,231 @@ async function finishMachineStage(client, orderId, machineKind) {
   }
 }
 
+/** Marks the machines as running and starts every queued load they hold for this order. */
+async function startQueuedLoads(client, orderId, machineIds) {
+  await client.query(
+    `UPDATE machines SET status = 'running'
+     WHERE id = ANY($1::integer[]) AND status <> 'maintenance'`,
+    [machineIds],
+  );
+  await client.query(
+    `UPDATE machine_loads SET status = 'running', started_at = COALESCE(started_at, now())
+     WHERE order_id = $1 AND machine_id = ANY($2::integer[]) AND status = 'queued'`,
+    [orderId, machineIds],
+  );
+}
+
+/**
+ * Works out which machines the staff member picked for this status change.
+ * Starting a wash with no new picks is allowed: it reuses loads that were
+ * queued earlier through POST /:id/loads.
+ */
+function parseMachineAssignments(body, order, status, machineKind) {
+  const supplied = body.machine_assignments;
+
+  if (!machineKind) {
+    const suppliedAny = supplied !== undefined && (!Array.isArray(supplied) || supplied.length > 0);
+    if (suppliedAny) {
+      throw new HttpError(400, 'This order stage does not require machine assignments');
+    }
+    return [];
+  }
+
+  const reusesQueuedWasherLoads = status === 'washing' &&
+    (supplied === undefined || (Array.isArray(supplied) && supplied.length === 0));
+  if (reusesQueuedWasherLoads) return [];
+
+  try {
+    return validateMachineAssignments(supplied, order.weight_kg);
+  } catch (error) {
+    throw new HttpError(400, error.message);
+  }
+}
+
+function parseCompletionChoices(body, status) {
+  if (status !== 'completed') {
+    if (body.addons !== undefined || body.addon_decision !== undefined) {
+      throw new HttpError(400, 'Add-ons can only be confirmed when completing an order');
+    }
+    return { completionAddons: [], addonDecision: null };
+  }
+  try {
+    return {
+      completionAddons: validateCompletionChoices(body),
+      addonDecision: body.addon_decision,
+    };
+  } catch (error) {
+    throw new HttpError(400, error.message);
+  }
+}
+
+/** Locks every machine this order touches (in id order, so two requests cannot deadlock). */
+async function lockOrderMachines(client, orderId, assignments) {
+  const existing = await client.query(
+    'SELECT DISTINCT machine_id FROM machine_loads WHERE order_id = $1',
+    [orderId],
+  );
+  const machineIds = uniqueNumbers([
+    ...existing.rows.map((row) => row.machine_id),
+    ...assignments.map((assignment) => assignment.machineId),
+  ]).sort((a, b) => a - b);
+  if (machineIds.length === 0) return;
+
+  const locked = await client.query(
+    'SELECT id FROM machines WHERE id = ANY($1::integer[]) ORDER BY id FOR UPDATE',
+    [machineIds],
+  );
+  if (locked.rowCount !== machineIds.length) {
+    throw new HttpError(409, 'One or more assigned machines no longer exist');
+  }
+}
+
+/** Entering "washing" with loads already queued: they must cover the whole order, then they start. */
+async function startQueuedWasherLoads(client, order) {
+  const queued = await client.query(
+    `SELECT COALESCE(SUM(ml.weight_kg), 0) AS weight
+     FROM machine_loads ml JOIN machines m ON m.id = ml.machine_id
+     WHERE ml.order_id = $1 AND m.machine_kind = 'washer' AND ml.status = 'queued'`,
+    [order.id],
+  );
+  const queuedCentiKg = toCentiKg(queued.rows[0].weight);
+  if (queuedCentiKg === 0) {
+    throw new HttpError(400, 'Select at least one available washer before starting the wash');
+  }
+  if (queuedCentiKg !== toCentiKg(order.weight_kg)) {
+    throw new HttpError(409, 'Assign the full order weight to washer loads before starting the wash');
+  }
+
+  const started = await client.query(
+    `UPDATE machine_loads ml
+     SET status = 'running', started_at = COALESCE(started_at, now())
+     FROM machines m
+     WHERE ml.machine_id = m.id AND ml.order_id = $1
+       AND m.machine_kind = 'washer' AND ml.status = 'queued'
+     RETURNING ml.machine_id`,
+    [order.id],
+  );
+  if (started.rowCount) {
+    await client.query(
+      `UPDATE machines SET status = 'running'
+       WHERE id = ANY($1::integer[]) AND status <> 'maintenance'`,
+      [uniqueNumbers(started.rows.map((row) => row.machine_id))],
+    );
+  }
+}
+
+/** Checks the picked machines are free and big enough, then queues one load per machine. */
+async function assignMachineLoads(client, { orderId, machineKind, assignments }) {
+  const machineIds = assignments.map((assignment) => assignment.machineId);
+
+  const machineResult = await client.query(
+    `SELECT id, name, machine_kind, capacity_kg, status
+     FROM machines WHERE id = ANY($1::integer[]) ORDER BY id`,
+    [machineIds],
+  );
+  const machineById = new Map(machineResult.rows.map((machine) => [Number(machine.id), machine]));
+  for (const assignment of assignments) {
+    const machine = machineById.get(assignment.machineId);
+    if (!machine || machine.machine_kind !== machineKind) {
+      throw new HttpError(409, `Select only available ${machineKind}s for this order stage`);
+    }
+    if (machine.status !== 'available' || Number(machine.capacity_kg) < assignment.weightKg) {
+      throw new HttpError(409, `${machine.name} is unavailable or too small for its assigned load`);
+    }
+  }
+
+  const busy = await client.query(
+    `SELECT m.name FROM machines m
+     WHERE m.id = ANY($1::integer[])
+       AND EXISTS (SELECT 1 FROM machine_loads ml
+                   WHERE ml.machine_id = m.id AND ml.status IN ('queued', 'running'))`,
+    [machineIds],
+  );
+  if (busy.rowCount) {
+    throw new HttpError(409, `Machine is already assigned: ${busy.rows.map((row) => row.name).join(', ')}`);
+  }
+
+  const maxLoad = await client.query(
+    'SELECT COALESCE(MAX(load_number), 0) AS max_load FROM machine_loads WHERE order_id = $1',
+    [orderId],
+  );
+  let loadNumber = Number(maxLoad.rows[0].max_load) + 1;
+  for (const assignment of assignments) {
+    await client.query(
+      `INSERT INTO machine_loads (order_id, machine_id, load_number, weight_kg, status)
+       VALUES ($1, $2, $3, $4, 'queued')`,
+      [orderId, assignment.machineId, loadNumber, assignment.weightKg],
+    );
+    loadNumber += 1;
+  }
+}
+
+/** Leaving "drying" for "folding": the dryers must have been running the whole order. */
+async function finishDryerStage(client, order) {
+  const dryerLoads = await client.query(
+    `SELECT COALESCE(SUM(ml.weight_kg), 0) AS weight
+     FROM machine_loads ml JOIN machines m ON m.id = ml.machine_id
+     WHERE ml.order_id = $1 AND m.machine_kind = 'dryer' AND ml.status = 'running'`,
+    [order.id],
+  );
+  if (toCentiKg(dryerLoads.rows[0].weight) !== toCentiKg(order.weight_kg)) {
+    throw new HttpError(409, 'Assign and run the full order weight on dryers before folding');
+  }
+  await finishMachineStage(client, order.id, 'dryer');
+}
+
+/** Charges the add-ons chosen at completion and adds them to the order price. */
+async function chargeCompletionAddons(client, orderId, completionAddons) {
+  const addonIds = completionAddons.map((addon) => addon.id);
+
+  const addonRows = await client.query(
+    `SELECT id, name, price FROM service_addons
+     WHERE id = ANY($1::integer[]) AND is_active = true
+     ORDER BY id FOR SHARE`,
+    [addonIds],
+  );
+  if (addonRows.rowCount !== completionAddons.length) {
+    throw new HttpError(409, 'One or more selected add-ons are no longer available');
+  }
+
+  const previouslyAdded = await client.query(
+    `SELECT addon_id FROM order_addons
+     WHERE order_id = $1 AND addon_id = ANY($2::integer[])`,
+    [orderId, addonIds],
+  );
+  if (previouslyAdded.rowCount) {
+    throw new HttpError(409, 'An add-on has already been charged to this order');
+  }
+
+  const quantityById = new Map(completionAddons.map((addon) => [addon.id, addon.quantity]));
+  let addedCents = 0;
+  for (const addon of addonRows.rows) {
+    const quantity = quantityById.get(Number(addon.id));
+    const unitPriceCents = Math.round(Number(addon.price) * 100);
+    const lineTotalCents = unitPriceCents * quantity;
+    addedCents += lineTotalCents;
+    await client.query(
+      `INSERT INTO order_addons
+         (order_id, addon_id, name_snapshot, unit_price_snapshot, quantity, line_total)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [orderId, addon.id, addon.name, unitPriceCents / 100, quantity, lineTotalCents / 100],
+    );
+  }
+  await client.query(
+    'UPDATE orders SET price = price + $2::numeric / 100 WHERE id = $1',
+    [orderId, addedCents],
+  );
+}
+
 /**
  * PATCH /api/orders/:id/status
  * Moves an order one step along new -> waiting -> washing -> drying -> folding -> ready -> completed.
+ * Machine loads and add-ons change together with the status, so it is all one transaction.
  */
 router.patch(
-  "/:id/status",
+  '/:id/status',
   asyncHandler(async (req, res) => {
-    const id = parseId(req.params.id, "order id");
+    const id = parseId(req.params.id, 'order id');
     const body = req.body || {};
 
     const order = await db.withTransaction(async (client) => {
@@ -326,214 +569,38 @@ router.patch(
       if (current.rows.length === 0) {
         throw new HttpError(404, `No order with id ${id}`);
       }
-
-      const { status, note } = validateStatusChange(
-        current.rows[0].status,
-        body,
-      );
-
       const before = current.rows[0];
+
+      const { status, note } = validateStatusChange(before.status, body);
       const machineKind = requiredMachineKind(before.load_type, status);
-      let assignments = [];
-      try {
-        if (machineKind) {
-          const useExistingWasherLoads = status === 'washing' &&
-            (body.machine_assignments === undefined ||
-              (Array.isArray(body.machine_assignments) && body.machine_assignments.length === 0));
-          if (useExistingWasherLoads) {
-            assignments = [];
-          } else {
-            assignments = validateMachineAssignments(
-              body.machine_assignments,
-              before.weight_kg,
-            );
-          }
-        } else if (body.machine_assignments !== undefined &&
-                   (!Array.isArray(body.machine_assignments) || body.machine_assignments.length > 0)) {
-          throw new Error('This order stage does not require machine assignments');
-        }
-      } catch (error) {
-        throw new HttpError(400, error.message);
-      }
+      const assignments = parseMachineAssignments(body, before, status, machineKind);
+      const { completionAddons, addonDecision } = parseCompletionChoices(body, status);
 
-      let completionAddons = [];
-      let addonDecision = null;
-      if (status === 'completed') {
-        try {
-          completionAddons = validateCompletionChoices(body);
-          addonDecision = body.addon_decision;
-        } catch (error) {
-          throw new HttpError(400, error.message);
-        }
-      } else if (body.addons !== undefined || body.addon_decision !== undefined) {
-        throw new HttpError(400, 'Add-ons can only be confirmed when completing an order');
-      }
+      await lockOrderMachines(client, id, assignments);
 
-      const oldMachineIds = await client.query(
-        'SELECT DISTINCT machine_id FROM machine_loads WHERE order_id = $1',
-        [id],
-      );
-      const lockMachineIds = [...new Set([
-        ...oldMachineIds.rows.map((row) => Number(row.machine_id)),
-        ...assignments.map((assignment) => assignment.machineId),
-      ])].sort((a, b) => a - b);
-      if (lockMachineIds.length) {
-        const lockedMachines = await client.query(
-          `SELECT id FROM machines WHERE id = ANY($1::integer[]) ORDER BY id FOR UPDATE`,
-          [lockMachineIds],
-        );
-        if (lockedMachines.rowCount !== lockMachineIds.length) {
-          throw new HttpError(409, 'One or more assigned machines no longer exist');
-        }
+      // Order matters below: the washer stage is closed before dryers are
+      // picked, so a machine freed by the last stage can be assigned again.
+      if (status === 'washing' && !assignments.length && WASHER_LOAD_TYPES.includes(before.load_type)) {
+        await startQueuedWasherLoads(client, before);
       }
-
-      if (status === 'washing' && !assignments.length && ['wash_fold', 'wash_only'].includes(before.load_type)) {
-        const washerLoads = await client.query(
-          `SELECT COALESCE(SUM(ml.weight_kg), 0) AS weight
-           FROM machine_loads ml JOIN machines m ON m.id = ml.machine_id
-           WHERE ml.order_id = $1 AND m.machine_kind = 'washer' AND ml.status = 'queued'`,
-          [id],
-        );
-        const queuedWeightCentiKg = Math.round(Number(washerLoads.rows[0].weight) * 100);
-        if (queuedWeightCentiKg === 0) {
-          throw new HttpError(400, 'Select at least one available washer before starting the wash');
-        }
-        if (queuedWeightCentiKg !== Math.round(Number(before.weight_kg) * 100)) {
-          throw new HttpError(409, 'Assign the full order weight to washer loads before starting the wash');
-        }
-        const started = await client.query(
-          `UPDATE machine_loads ml
-           SET status = 'running', started_at = COALESCE(started_at, now())
-           FROM machines m
-           WHERE ml.machine_id = m.id AND ml.order_id = $1
-             AND m.machine_kind = 'washer' AND ml.status = 'queued'
-           RETURNING ml.machine_id`,
-          [id],
-        );
-        if (started.rowCount) {
-          await client.query(
-            "UPDATE machines SET status = 'running' WHERE id = ANY($1::integer[]) AND status <> 'maintenance'",
-            [[...new Set(started.rows.map((row) => Number(row.machine_id))) ]],
-          );
-        }
-      }
-
-      if (status === 'drying' && ['wash_fold', 'wash_only'].includes(before.load_type)) {
+      if (status === 'drying' && WASHER_LOAD_TYPES.includes(before.load_type)) {
         await finishMachineStage(client, id, 'washer');
       }
-
-      if (machineKind) {
-        const machineResult = await client.query(
-          `SELECT id, machine_kind, capacity_kg, status
-           FROM machines WHERE id = ANY($1::integer[]) ORDER BY id`,
-          [assignments.map((assignment) => assignment.machineId)],
-        );
-        const machineById = new Map(machineResult.rows.map((machine) => [Number(machine.id), machine]));
-        for (const assignment of assignments) {
-          const machine = machineById.get(assignment.machineId);
-          if (!machine || machine.machine_kind !== machineKind) {
-            throw new HttpError(409, `Select only available ${machineKind}s for this order stage`);
-          }
-          if (machine.status !== 'available' || Number(machine.capacity_kg) < assignment.weightKg) {
-            throw new HttpError(409, `${machine.name || 'Selected machine'} is unavailable or too small for its assigned load`);
-          }
-        }
-        const busy = await client.query(
-          `SELECT m.name FROM machines m
-           WHERE m.id = ANY($1::integer[])
-             AND EXISTS (SELECT 1 FROM machine_loads ml
-                         WHERE ml.machine_id = m.id AND ml.status IN ('queued', 'running'))`,
-          [assignments.map((assignment) => assignment.machineId)],
-        );
-        if (busy.rowCount) {
-          throw new HttpError(409, `Machine is already assigned: ${busy.rows.map((row) => row.name).join(', ')}`);
-        }
-        const maxLoad = await client.query(
-          'SELECT COALESCE(MAX(load_number), 0) AS max_load FROM machine_loads WHERE order_id = $1',
-          [id],
-        );
-        let loadNumber = Number(maxLoad.rows[0].max_load) + 1;
-        for (const assignment of assignments) {
-          await client.query(
-            `INSERT INTO machine_loads (order_id, machine_id, load_number, weight_kg, status)
-             VALUES ($1, $2, $3, $4, 'queued')`,
-            [id, assignment.machineId, loadNumber, assignment.weightKg],
-          );
-          loadNumber += 1;
-        }
-        if (status === 'drying') {
-          await client.query(
-            "UPDATE machines SET status = 'running' WHERE id = ANY($1::integer[]) AND status <> 'maintenance'",
-            [assignments.map((assignment) => assignment.machineId)],
-          );
-          await client.query(
-            `UPDATE machine_loads SET status = 'running', started_at = COALESCE(started_at, now())
-             WHERE order_id = $1 AND machine_id = ANY($2::integer[]) AND status = 'queued'`,
-            [id, assignments.map((assignment) => assignment.machineId)],
-          );
-        } else if (status === 'washing') {
-          await client.query(
-            "UPDATE machines SET status = 'running' WHERE id = ANY($1::integer[]) AND status <> 'maintenance'",
-            [assignments.map((assignment) => assignment.machineId)],
-          );
-          await client.query(
-            `UPDATE machine_loads SET status = 'running', started_at = COALESCE(started_at, now())
-             WHERE order_id = $1 AND machine_id = ANY($2::integer[]) AND status = 'queued'`,
-            [id, assignments.map((assignment) => assignment.machineId)],
+      if (machineKind && assignments.length) {
+        await assignMachineLoads(client, { orderId: id, machineKind, assignments });
+        if (status === 'drying' || status === 'washing') {
+          await startQueuedLoads(
+            client,
+            id,
+            assignments.map((assignment) => assignment.machineId),
           );
         }
       }
-
-      if (status === 'folding' && ['wash_fold', 'dry_only'].includes(before.load_type)) {
-        const dryerLoads = await client.query(
-          `SELECT COALESCE(SUM(ml.weight_kg), 0) AS weight
-           FROM machine_loads ml JOIN machines m ON m.id = ml.machine_id
-           WHERE ml.order_id = $1 AND m.machine_kind = 'dryer' AND ml.status = 'running'`,
-          [id],
-        );
-        if (Math.round(Number(dryerLoads.rows[0].weight) * 100) !==
-            Math.round(Number(before.weight_kg) * 100)) {
-          throw new HttpError(409, 'Assign and run the full order weight on dryers before folding');
-        }
-        await finishMachineStage(client, id, 'dryer');
+      if (status === 'folding' && DRYER_LOAD_TYPES.includes(before.load_type)) {
+        await finishDryerStage(client, before);
       }
-
       if (status === 'completed' && addonDecision === 'add' && completionAddons.length) {
-        const addonRows = await client.query(
-          `SELECT id, name, price FROM service_addons
-           WHERE id = ANY($1::integer[]) AND is_active = true
-           ORDER BY id FOR SHARE`,
-          [completionAddons.map((addon) => addon.id)],
-        );
-        if (addonRows.rowCount !== completionAddons.length) {
-          throw new HttpError(409, 'One or more selected add-ons are no longer available');
-        }
-        const previouslyAdded = await client.query(
-          `SELECT addon_id FROM order_addons
-           WHERE order_id = $1 AND addon_id = ANY($2::integer[])`,
-          [id, completionAddons.map((addon) => addon.id)],
-        );
-        if (previouslyAdded.rowCount) {
-          throw new HttpError(409, 'An add-on has already been charged to this order');
-        }
-        const choicesById = new Map(completionAddons.map((addon) => [addon.id, addon]));
-        let addedCents = 0;
-        for (const addon of addonRows.rows) {
-          const quantity = choicesById.get(Number(addon.id)).quantity;
-          const unitPriceCents = Math.round(Number(addon.price) * 100);
-          const lineTotalCents = unitPriceCents * quantity;
-          addedCents += lineTotalCents;
-          await client.query(
-            `INSERT INTO order_addons
-               (order_id, addon_id, name_snapshot, unit_price_snapshot, quantity, line_total)
-             VALUES ($1, $2, $3, $4, $5, $6)`,
-            [id, addon.id, addon.name, unitPriceCents / 100, quantity, lineTotalCents / 100],
-          );
-        }
-        await client.query(
-          'UPDATE orders SET price = price + $2::numeric / 100 WHERE id = $1',
-          [id, addedCents],
-        );
+        await chargeCompletionAddons(client, id, completionAddons);
       }
 
       await client.query(
@@ -545,7 +612,7 @@ router.patch(
         [status, id],
       );
       await client.query(
-        "INSERT INTO order_status_history (order_id, status, note) VALUES ($1, $2, $3)",
+        'INSERT INTO order_status_history (order_id, status, note) VALUES ($1, $2, $3)',
         [id, status, note],
       );
       const full = await client.query(`${ORDER_SELECT} WHERE o.id = $1`, [id]);
@@ -561,13 +628,13 @@ router.patch(
  * Records a partial or final payment without allowing overpayment.
  */
 router.post(
-  "/:id/payment",
+  '/:id/payment',
   asyncHandler(async (req, res) => {
-    const id = parseId(req.params.id, "order id");
+    const id = parseId(req.params.id, 'order id');
     const { amount, method } = validatePayment(req.body);
 
     if (amount <= 0) {
-      throw new HttpError(400, "Payment amount must be greater than zero");
+      throw new HttpError(400, 'Payment amount must be greater than zero');
     }
 
     const payment = await db.withTransaction(async (client) => {
@@ -613,19 +680,19 @@ router.post(
 );
 
 router.get(
-  "/:id/load-plan",
+  '/:id/load-plan',
   asyncHandler(async (req, res) => {
-    const orderId = parseId(req.params.id, "order_id");
+    const orderId = parseId(req.params.id, 'order_id');
     const capacityKg = Number(req.query.capacity_kg);
 
     if (!Number.isFinite(capacityKg) || capacityKg <= 0) {
-      throw new HttpError(400, "capacity_kg must be a number greater than 0");
+      throw new HttpError(400, 'capacity_kg must be a number greater than 0');
     }
     if (Math.abs(capacityKg * 100 - Math.round(capacityKg * 100)) > 1e-7) {
-      throw new HttpError(400, "capacity_kg must have no more than two decimal places");
+      throw new HttpError(400, 'capacity_kg must have no more than two decimal places');
     }
     if (capacityKg < 0.1 || capacityKg > 100) {
-      throw new HttpError(400, "capacity_kg must be from 0.1 to 100 kg");
+      throw new HttpError(400, 'capacity_kg must be from 0.1 to 100 kg');
     }
 
     const { rows } = await db.query(
@@ -642,7 +709,7 @@ router.get(
     const weightKg = Number(rows[0].weight_kg);
 
     if (!Number.isFinite(weightKg) || weightKg <= 0) {
-      throw new HttpError(409, "This order does not have a valid weight");
+      throw new HttpError(409, 'This order does not have a valid weight');
     }
 
     let loads;
@@ -662,32 +729,26 @@ router.get(
   }),
 );
 
+/**
+ * POST /api/orders/:id/loads
+ * Queues one machine load for an order, checking weight, capacity and machine state.
+ */
 router.post(
-  "/:id/loads",
+  '/:id/loads',
   asyncHandler(async (req, res) => {
-    const orderId = parseId(req.params.id, "order_id");
-    const { machineId, loadNumber, weightKg, notes } = validateMachineLoad(
-      req.body,
-    );
+    const orderId = parseId(req.params.id, 'order_id');
+    const { machineId, loadNumber, weightKg, notes } = validateMachineLoad(req.body);
 
-    const client = await db.pool.connect();
-
-    try {
-      await client.query("BEGIN");
-
+    const load = await db.withTransaction(async (client) => {
       const orderResult = await client.query(
-        `SELECT id, weight_kg, load_type
-         FROM orders
-         WHERE id = $1
-         FOR UPDATE`,
+        'SELECT id, weight_kg, load_type FROM orders WHERE id = $1 FOR UPDATE',
         [orderId],
       );
-
       if (orderResult.rowCount === 0) {
         throw new HttpError(404, `No order with id ${orderId}`);
       }
-      const orderRow = orderResult.rows[0];
-      if (!orderRow.weight_kg || orderRow.load_type === 'fold_only') {
+      const order = orderResult.rows[0];
+      if (!order.weight_kg || order.load_type === 'fold_only') {
         throw new HttpError(409, 'This order does not have a machine-assignable load');
       }
 
@@ -698,194 +759,115 @@ router.post(
          FOR UPDATE`,
         [machineId],
       );
-
       if (machineResult.rowCount === 0) {
         throw new HttpError(404, `No machine with id ${machineId}`);
       }
-
       const machine = machineResult.rows[0];
 
-      if (machine.status === "maintenance") {
-        throw new HttpError(409, "This machine is currently in maintenance");
+      if (machine.status === 'maintenance') {
+        throw new HttpError(409, 'This machine is currently in maintenance');
       }
       if (machine.status === 'running') {
         throw new HttpError(409, 'This machine is already running a load');
       }
 
-      const expectedKind = orderRow.load_type === 'wash_only'
-        ? 'washer'
-        : orderRow.load_type === 'dry_only'
-          ? 'dryer'
-          : null;
+      const expectedKind = EXCLUSIVE_MACHINE_KIND[order.load_type];
       if (expectedKind && machine.machine_kind !== expectedKind) {
         throw new HttpError(409, `This order requires a ${expectedKind}`);
       }
-
       if (weightKg > Number(machine.capacity_kg)) {
-        throw new HttpError(
-          409,
-          `This load exceeds the machine capacity of ${machine.capacity_kg}kg`,
-        );
+        throw new HttpError(409, `This load exceeds the machine capacity of ${machine.capacity_kg}kg`);
       }
 
-      const assignedResult = await client.query(
+      const assigned = await client.query(
         'SELECT COALESCE(SUM(weight_kg), 0) AS assigned_kg FROM machine_loads WHERE order_id = $1',
         [orderId],
       );
-      const assignedCentiKg = Math.round(Number(assignedResult.rows[0].assigned_kg) * 100);
-      const nextCentiKg = assignedCentiKg + Math.round(weightKg * 100);
-      const orderCentiKg = Math.round(Number(orderRow.weight_kg) * 100);
-      if (nextCentiKg > orderCentiKg) {
+      if (toCentiKg(assigned.rows[0].assigned_kg) + toCentiKg(weightKg) > toCentiKg(order.weight_kg)) {
         throw new HttpError(409, 'Assigned load weight cannot exceed the order weight');
       }
 
-      const existingLoad = await client.query(
-        `SELECT id
-         FROM machine_loads
-         WHERE machine_id = $1
-           AND status IN ('queued', 'running')
+      const activeLoad = await client.query(
+        `SELECT id FROM machine_loads
+         WHERE machine_id = $1 AND status IN ('queued', 'running')
          LIMIT 1`,
         [machineId],
       );
-
-      if (existingLoad.rowCount > 0) {
-        throw new HttpError(409, "This machine already has an active load");
+      if (activeLoad.rowCount > 0) {
+        throw new HttpError(409, 'This machine already has an active load');
       }
 
-      const loadResult = await client.query(
+      const inserted = await client.query(
         `INSERT INTO machine_loads
-          (order_id, machine_id, load_number, weight_kg, status, notes)
+           (order_id, machine_id, load_number, weight_kg, status, notes)
          VALUES ($1, $2, $3, $4, 'queued', $5)
-         RETURNING id, order_id, machine_id, load_number, weight_kg,
-                   status, started_at, completed_at, notes, created_at`,
+         RETURNING ${LOAD_COLUMNS}`,
         [orderId, machineId, loadNumber, weightKg, notes],
       );
+      return inserted.rows[0];
+    });
 
-      await client.query("COMMIT");
-
-      res.status(201).json({ load: loadResult.rows[0] });
-    } catch (err) {
-      await client.query("ROLLBACK");
-      throw err;
-    } finally {
-      client.release();
-    }
+    res.status(201).json({ load });
   }),
 );
 
+/**
+ * PATCH /api/orders/:orderId/loads/:loadId/status
+ * Moves a single load queued -> running -> completed and updates its machine to match.
+ */
 router.patch(
-  "/:orderId/loads/:loadId/status",
+  '/:orderId/loads/:loadId/status',
   asyncHandler(async (req, res) => {
-    const orderId = parseId(req.params.orderId, "order_id");
-    const loadId = parseId(req.params.loadId, "load_id");
+    const orderId = parseId(req.params.orderId, 'order_id');
+    const loadId = parseId(req.params.loadId, 'load_id');
+    const nextStatus = String((req.body || {}).status || '').trim();
 
-    const allowedStatuses = ["queued", "running", "completed"];
-    const nextStatus = String(req.body.status || "").trim();
-
-    if (!allowedStatuses.includes(nextStatus)) {
-      throw new HttpError(
-        400,
-        "status must be one of: queued, running, completed",
-      );
+    if (!Object.keys(LOAD_TRANSITIONS).includes(nextStatus)) {
+      throw new HttpError(400, 'status must be one of: queued, running, completed');
     }
 
-    const client = await db.pool.connect();
-
-    try {
-      await client.query("BEGIN");
-
+    const load = await db.withTransaction(async (client) => {
       const loadResult = await client.query(
-        `SELECT ml.id,
-                ml.order_id,
-                ml.machine_id,
-                ml.status,
-                m.status AS machine_status
+        `SELECT ml.id, ml.machine_id, ml.status, m.status AS machine_status
          FROM machine_loads ml
          JOIN machines m ON m.id = ml.machine_id
-         WHERE ml.id = $1
-           AND ml.order_id = $2
+         WHERE ml.id = $1 AND ml.order_id = $2
          FOR UPDATE`,
         [loadId, orderId],
       );
-
       if (loadResult.rowCount === 0) {
-        throw new HttpError(
-          404,
-          `No machine load with id ${loadId} for order ${orderId}`,
-        );
+        throw new HttpError(404, `No machine load with id ${loadId} for order ${orderId}`);
       }
+      const current = loadResult.rows[0];
 
-      const load = loadResult.rows[0];
-
-      const validTransitions = {
-        queued: ["running"],
-        running: ["completed"],
-        completed: [],
-      };
-
-      if (!validTransitions[load.status].includes(nextStatus)) {
+      const allowedNext = LOAD_TRANSITIONS[current.status];
+      if (!allowedNext.includes(nextStatus)) {
         throw new HttpError(
           409,
-          `A ${load.status} load can only move to ${
-            validTransitions[load.status].join(", ") || "no further status"
-          }`,
+          `A ${current.status} load can only move to ${allowedNext.join(', ') || 'no further status'}`,
         );
       }
-
-      if (nextStatus === "running" && load.machine_status === "maintenance") {
-        throw new HttpError(409, "This machine is currently in maintenance");
+      if (nextStatus === 'running' && current.machine_status === 'maintenance') {
+        throw new HttpError(409, 'This machine is currently in maintenance');
       }
 
-      let updateQuery;
-      let updateParams;
+      const starting = nextStatus === 'running';
+      await client.query('UPDATE machines SET status = $2 WHERE id = $1', [
+        current.machine_id,
+        starting ? 'running' : 'available',
+      ]);
+      const updated = await client.query(
+        starting
+          ? `UPDATE machine_loads SET status = 'running', started_at = now()
+             WHERE id = $1 RETURNING ${LOAD_COLUMNS}`
+          : `UPDATE machine_loads SET status = 'completed', completed_at = now()
+             WHERE id = $1 RETURNING ${LOAD_COLUMNS}`,
+        [loadId],
+      );
+      return updated.rows[0];
+    });
 
-      if (nextStatus === "running") {
-        updateQuery = `
-          UPDATE machine_loads
-          SET status = 'running',
-              started_at = now()
-          WHERE id = $1
-          RETURNING id, order_id, machine_id, load_number, weight_kg,
-                    status, started_at, completed_at, notes, created_at
-        `;
-        updateParams = [loadId];
-
-        await client.query(
-          `UPDATE machines
-           SET status = 'running'
-           WHERE id = $1`,
-          [load.machine_id],
-        );
-      } else {
-        updateQuery = `
-          UPDATE machine_loads
-          SET status = 'completed',
-              completed_at = now()
-          WHERE id = $1
-          RETURNING id, order_id, machine_id, load_number, weight_kg,
-                    status, started_at, completed_at, notes, created_at
-        `;
-        updateParams = [loadId];
-
-        await client.query(
-          `UPDATE machines
-           SET status = 'available'
-           WHERE id = $1`,
-          [load.machine_id],
-        );
-      }
-
-      const updatedLoad = await client.query(updateQuery, updateParams);
-
-      await client.query("COMMIT");
-
-      res.json({ load: updatedLoad.rows[0] });
-    } catch (err) {
-      await client.query("ROLLBACK");
-      throw err;
-    } finally {
-      client.release();
-    }
+    res.json({ load });
   }),
 );
 
