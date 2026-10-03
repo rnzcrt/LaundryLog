@@ -106,7 +106,7 @@ This document records how I used AI assistance during LaundryLog planning, imple
 - **What I implemented:** I personally implemented the backend changes in `src/routes/orders.js`, `src/middleware/basicAuth.js`, and `src/middleware/errorHandler.js`, using the review/refactoring work as guidance. I reviewed the resulting code and retained the changes that matched the intended behavior.
 - **What I checked:** The review record reports that `scripts/check.js` and 29 selected tests passed, and that all eight order routes loaded and registered. The PostgreSQL integration suite in `test/orders.test.js` was not run because a configured test database was unavailable at that time. I therefore do not claim that the full integration suite passed.
 - **Why:** To make the backend easier to read and maintain, reduce repeated logic, and return more appropriate errors for malformed or oversized JSON requests.
-- **Related code changes:** These implementation changes had not yet been committed when this entry was prepared; add the resulting code commit link after it is committed.
+- **Related code changes:** The refactored source is present in the project ZIP I reviewed, but it is not yet present on the repository's current `main` branch. I have not attached a commit link because the code has not been committed to GitHub yet.
 
 ### 2026-10-03 — README organization and setup instructions
 
@@ -158,7 +158,7 @@ I contributed by defining the laundry shop's operational requirements, making de
 
 ### Parts I personally implemented
 
-The following backend changes were personally implemented by me. Claude provided refactoring/review assistance, but I wrote and implemented the final changes described here. The implementation changes were not yet committed when this document was prepared, so no code commit link is claimed below.
+The following backend changes were personally implemented by me. Claude provided refactoring/review assistance, but I wrote and implemented the final changes described here. These changes are in my reviewed project ZIP, but have not yet been committed to the repository's current `main` branch, so no code commit link is claimed below.
 
 #### 1. Order-status and machine-load route refactor
 
@@ -214,6 +214,6 @@ The following backend changes were personally implemented by me. Claude provided
 - [x] Record the available check/test results without claiming the unrun PostgreSQL integration suite passed.
 - [x] Check the mockup image references against docs/assets/; note that mockup-order-list-empty.png is still missing.
 - [ ] Re-read src/middleware/basicAuth.js and src/utils/orderWorkflow.js and practice explaining them in my own words.
-- [ ] Recheck the README setup commands and API paths against the current repository before submission.
-- [ ] Commit the backend implementation changes and add their commit link to the October 3 entry.
+- [x] Compare README setup commands with `package.json` scripts and Node.js engine requirement; compare documented API route families with the current route files. Exact request and response schemas still require checking against route implementations.
+- [ ] Commit the backend implementation changes from the reviewed project ZIP to GitHub and add the resulting commit link to the October 3 entry.
 - [ ] Make any final edits needed so every statement matches my own experience.
