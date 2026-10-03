@@ -39,6 +39,10 @@ LaundryLog helps staff follow an order from drop-off to pickup while keeping mac
 
 The Express application serves the frontend and JSON API from the same service. The browser sends requests to the API, and the backend validates input and applies business rules before reading or writing PostgreSQL.
 
+### Architecture
+
+LaundryLog uses a single Node.js and Express service to serve the frontend and provide a JSON API. The browser uses vanilla JavaScript to communicate with API routes, which validate requests and apply application rules before accessing PostgreSQL. Database migrations manage schema changes, while a separate seed script provides sample data for local development. The application is deployed on Render, with environment variables used for configuration and secrets.
+
 ## 3. Run LaundryLog locally
 
 Follow these steps to set up a local development copy.
@@ -212,36 +216,47 @@ Staff-facing API routes use HTTP Basic Authentication. The /healthz liveness end
 The orders endpoint supports status and customer-search filters. The load-plan endpoint accepts a machine capacity value. The reports endpoint accepts from and to dates. Refer to the route files in src/routes/ for exact request fields, validation rules, and response shapes.
 
 ## 7. Project structure
+## 7. Project structure
 
     LaundryLog/
     ├── db/
-    │   ├── migrations/       Ordered database migrations
-    │   ├── migrate.js        Migration runner
-    │   ├── run-migrations.js Migration command
-    │   ├── run-seed.js       Sample-data command
-    │   └── seed.sql          Sample data
+    │   ├── migrations/          Ordered database migrations
+    │   ├── migrate.js           Migration runner
+    │   ├── run-migrations.js    Migration command
+    │   ├── run-seed.js          Sample-data command
+    │   ├── schema.sql           Database schema reference
+    │   └── seed.sql             Sample data
     ├── public/
-    │   ├── index.html        Application page
-    │   ├── styles.css        Layout and component styles
-    │   └── app.js            Browser-side application logic
+    │   ├── index.html           Application page
+    │   ├── styles.css           Layout and component styles
+    │   ├── app.js               Browser-side application logic
+    │   ├── tabs.js              Tab navigation
+    │   └── workflow.js          Frontend workflow behavior
     ├── scripts/
-    │   └── check.js          Project preflight checks
+    │   └── check.js             Project preflight checks
     ├── src/
-    │   ├── app.js            Express app configuration
-    │   ├── server.js         Server entry point
-    │   ├── db.js             PostgreSQL helpers
-    │   ├── middleware/       Authentication and error handling
-    │   ├── routes/           API route handlers
-    │   ├── utils/            Pricing, workflow, and load planning
-    │   └── validators/       Server-side request validation
+    │   ├── app.js               Express app configuration
+    │   ├── server.js            Server entry point
+    │   ├── config.js            Environment configuration
+    │   ├── db.js                PostgreSQL helpers
+    │   ├── middleware/          Authentication and error handling
+    │   ├── routes/              API route handlers
+    │   ├── utils/               Pricing, workflow, and load planning
+    │   └── validators/          Server-side request validation
     ├── docs/
-    │   ├── assets/           Mockup screenshots
-    │   └── design-system/    Design-system reference PDFs
-    ├── .env.example          Environment-variable template
-    ├── AI-USAGE.md           AI assistance record
-    ├── LICENSE               Project license
+    │   ├── assets/              Mockup screenshots
+    │   ├── design-system/       Design-system reference PDFs
+    │   ├── 01-proposal.md
+    │   ├── 02-mockup.md
+    │   ├── 03-design-system.md
+    │   ├── 04-weekly-reports.md
+    │   ├── 05-demo-video.md
+    │   └── 06-security-and-privacy.md
+    ├── .env.example             Environment-variable template
+    ├── AI-USAGE.md              AI assistance record
+    ├── LICENSE                  Project license
     └── README.md
-
+    
 ## 8. Screenshots and design references
 
 Mockup screenshots are stored in docs/assets/.
@@ -304,7 +319,11 @@ Set secrets through the hosting provider's environment settings, not in source c
 - Base service prices are code-defined rather than editable in a business-settings page.
 - Hosting and database plan details should be rechecked in the provider dashboard.
 
-Potential future work includes payment corrections with an audit trail, browser-level regression tests, improved reporting, and more complete account and permission management.
+### What I would do next
+
+- **Add individual staff accounts and role-based permissions** so access can be managed for different staff members instead of relying on a shared login.
+- **Build a payment correction and refund workflow** with an audit trail to record adjustments and preserve payment history.
+- **Expand automated testing** with browser-level regression tests and improve reporting as the application grows.
 
 ## 12. Author and course
 
