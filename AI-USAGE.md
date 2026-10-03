@@ -2,7 +2,7 @@
 
 This document records how I used AI assistance during LaundryLog planning, implementation, testing, troubleshooting, and documentation. It explains how AI contributed and what I reviewed or changed as the project author.
 
-**Accuracy note:** Some entries below are summaries reconstructed from conversation and Git history, not verbatim prompts. Compare them with the actual chat history and edit or remove anything inaccurate before submitting. A commit link identifies related changes, but does not prove which lines were written by me or AI.
+**Accuracy note:** The request descriptions below are concise summaries rather than verbatim prompts. I reviewed these entries against the conversation and project history available to me. Commit links identify related changes, but do not by themselves establish authorship of individual lines.
 
 ## 1. How I used AI
 
@@ -94,40 +94,43 @@ This document records how I used AI assistance during LaundryLog planning, imple
 - **Tool:** ChatGPT
 - **Request summary:** Organize and finish the README as a step-by-step guide.
 - **AI assistance:** Drafted a reorganized README covering overview, local setup, app workflow, API, project structure, screenshots, deployment, security, limitations, AI use, and license.
-- **What I used and reviewed:** The README was updated in the repository. Screenshot paths and setup instructions should be checked against the actual files and scripts before submission.
+- **What I used and reviewed:** The README was updated in the repository. I reviewed the structure and checked it against the project details available to me.
 - **Why:** Readers should be able to understand the project and follow setup and usage instructions in order.
 - **Related commit:** https://github.com/rnzcrt/LaundryLog/commit/c404665535130bd3eb3a30efaff4bc30804833d6
 
 ## 2. Where the AI got it wrong or gave unsuitable output
 
-These examples describe AI-assisted work in this project that needed correction or additional action. They focus on the specific mismatch or limitation rather than implying that the whole feature was unusable.
+These examples are based on issues visible in the project work and conversation. They describe incomplete or mismatched AI-assisted outputs and the corrections made.
 
 ### Case 1 — README content was duplicated and out of order
 
 - **Tool:** ChatGPT
 - **Request:** Help prepare the LaundryLog README using the project details and README template.
 - **What the AI produced:** An earlier README draft repeated local setup material, and some API, setup, and documentation sections appeared after the License section.
-- **What was wrong or unsuitable:** The repeated and misplaced sections made the README difficult to follow and did not provide a clean reading order.
+- **What was wrong or unsuitable:** The repeated and misplaced sections made the README difficult to follow and did not provide a clear reading order.
 - **What I did instead:** I asked for the README to be reorganized as a step-by-step process, then reviewed and updated the file so the overview, setup, application usage, technical details, and license appeared in a logical order.
 - **How I checked it:** I reviewed the resulting README in the repository and confirmed the update was saved.
 - **Related commit:** https://github.com/rnzcrt/LaundryLog/commit/c404665535130bd3eb3a30efaff4bc30804833d6
 
-### Case 2 — Mockup image paths did not match the folder structure
+### Case 2 — Pricing logic was not yet connected to order creation
 
 - **Tool:** ChatGPT
-- **Request:** Help document the LaundryLog mockups and design references.
-- **What the AI produced:** An earlier mockup-document draft used image paths pointing to an assets folder beside the documentation.
-- **What was wrong or unsuitable:** The project folder structure shown in my files placed the images inside docs/assets, so those earlier relative paths did not match where the mockup images were stored.
-- **What I did instead:** I used the actual docs/assets folder structure when organizing the screenshot references in the README.
-- **How I checked it:** I compared the paths with the project folder view. I still need to confirm every referenced image is committed at the exact path before submission.
-- **Related change:** README organization commit https://github.com/rnzcrt/LaundryLog/commit/c404665535130bd3eb3a30efaff4bc30804833d6
+- **Request:** Help implement load-based and combined-service pricing and connect the calculations to the order workflow.
+- **What the AI-assisted work produced initially:** The project had a pricing utility and tests, but the Week 2 project report recorded that automatic pricing was not yet connected to order creation because the machine-selection design was still being worked out.
+- **What was incomplete:** A pricing utility by itself did not provide the complete user-facing behavior of calculating a new order's price during order creation.
+- **What I did instead:** I continued the service and order-flow implementation so automatic pricing could be integrated with order creation, while retaining tests and compatibility for older records.
+- **How I checked it:** I reviewed the later order-service and automatic-pricing changes in the project history and checked the feature in the application.
+- **Related commits:**
+  - https://github.com/rnzcrt/LaundryLog/commit/275b930
+  - https://github.com/rnzcrt/LaundryLog/commit/e893acd
+  - https://github.com/rnzcrt/LaundryLog/commit/ac9075b
 
-### Case 3 — A code migration did not automatically update the production database
+### Case 3 — The deployed add-on catalog needed a separate database migration
 
 - **Tool:** ChatGPT
 - **Request:** Help update the completion add-on catalog and its database migration.
 - **What the AI-assisted change produced:** The code and migration for the updated add-on catalog were committed, but the deployed application did not show the new catalog until the production database migration was applied.
-- **What was incomplete:** Updating the repository and deploying the application was not enough to update the existing production database. The database needed the migration run separately.
+- **What was incomplete:** Deploying the application code did not, by itself, update the existing production database. The database needed the migration run separately.
 - **What I did instead:** I applied migration 011_completion_addon_catalog.sql to the production database using the migration process, then refreshed the deployed app and checked that the add-ons appeared.
 - **How I checked it:** The migration runner reported that migration 011 was applied and completed; I then confirmed the catalog appeared in the deployed app.
 - **Related commit:** https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5
@@ -136,22 +139,25 @@ These examples describe AI-assisted work in this project that needed correction 
 
 I contributed by defining the laundry shop's operational requirements, making decisions about how the application should behave, reviewing AI-assisted changes, testing features, and checking the deployed system. AI helped generate and revise code and documentation, so I do not claim every line in the related commits was written manually by me.
 
-### My contribution — LaundryLog requirements and acceptance testing
+### My contribution — Requirements and acceptance testing
 
 - **Feature area:** Laundry order workflow, pricing rules, machine capacity, payment handling, and completion add-ons.
 - **My contribution:** I specified the expected order stages, Regular and Titan machine capacities and prices, included versus optional folding, supported add-on choices, and how payments and outstanding balances should behave. I used those requirements to review the implementation and identify what needed to work in the deployed app.
-- **How it works:** The requirements define expected behavior from order creation through machine processing and completion. They also define how service and machine choices affect prices, how partial payments affect the remaining balance, and which optional products or services can be added.
+- **How it works:** These requirements define expected behavior from order creation through machine processing and completion. They also define how service and machine choices affect prices, how partial payments affect the remaining balance, and which optional products or services can be added.
 - **How I verified it:** I reviewed the workflow and pricing behavior, ran project checks and tests during development, checked the deployed order flow, and confirmed the add-on catalog appeared after applying the production migration.
-- **Related files:** src/utils/orderWorkflow.js, pricing and order route logic, add-on catalog validation, and related tests. These files were AI-assisted; this describes my requirements, decisions, review, and verification rather than claiming sole authorship of their code.
+- **Related files:** src/utils/orderWorkflow.js, pricing and order route logic, add-on catalog validation, and related tests. These files were AI-assisted; this entry describes my requirements, decisions, review, and verification rather than claiming sole authorship of their code.
 - **Related commit:** https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5
 
 ### AI-assisted part I understand best — Order workflow validation
 
 - **File:** src/utils/orderWorkflow.js
 - **Related commit:** https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5
-- **What the code does:** This utility centralizes the allowed order-stage transitions used by the application. The current workflow is Waiting, Washing, Drying, Folding, Ready, and Completed. It helps the backend check whether a requested status change is valid instead of relying only on the frontend.
+- **What the code does:** This utility provides three workflow-related functions:
+  - requiredMachineKind(loadType, destination) identifies whether a washer or dryer is required for a supported load type and destination stage.
+  - validateMachineAssignments(assignments, totalWeightKg) checks the assignment list, machine IDs, duplicate assignments, valid load weights, and whether assigned weights add up to the order's total weight.
+  - validateCompletionChoices(body) checks whether add-ons were selected or explicitly skipped, and validates add-on IDs and quantities.
 - **What AI contributed:** ChatGPT assisted with the workflow implementation and related backend, interface, and test changes.
-- **What I reviewed or changed:** I defined the required order of stages and reviewed the implementation against the laundry process. I checked that workflow enforcement belonged on the backend and reviewed related tests and deployed behavior. I should use exact function names from the current file when explaining the code in a presentation.
+- **What I reviewed or changed:** I defined the required order stages and operational rules, then reviewed the implementation against the laundry process. I checked that workflow enforcement belonged on the backend and reviewed related tests and deployed behavior. I can explain the three functions above using the current source file.
 
 ---
 
@@ -161,7 +167,8 @@ I contributed by defining the laundry shop's operational requirements, making de
 - [x] Keep summarized requests labelled as summaries rather than presenting them as exact quotations.
 - [x] Link entries to related project commits.
 - [x] Describe my contribution as requirements, decisions, review, testing, and deployment verification without claiming sole authorship of AI-assisted code.
-- [ ] Read src/utils/orderWorkflow.js and make sure I can explain its exact functions and tests.
+- [x] Identify an AI-assisted file and summarize its current functions.
+- [ ] Re-read src/utils/orderWorkflow.js and practice explaining it in my own words.
 - [ ] Confirm every referenced mockup image exists in docs/assets/.
 - [ ] Recheck the README setup commands and API paths against the current repository before submission.
-- [ ] Make final edits if needed so every statement matches my own experience.
+- [ ] Make any final edits needed so every statement matches my own experience.
