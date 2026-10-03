@@ -112,18 +112,15 @@ These examples are based on issues visible in the project work and conversation.
 - **How I checked it:** I reviewed the resulting README in the repository and confirmed the update was saved.
 - **Related commit:** https://github.com/rnzcrt/LaundryLog/commit/c404665535130bd3eb3a30efaff4bc30804833d6
 
-### Case 2 — Pricing logic was not yet connected to order creation
+### Case 2 — Mockup image paths did not match the folder structure
 
 - **Tool:** ChatGPT
-- **Request:** Help implement load-based and combined-service pricing and connect the calculations to the order workflow.
-- **What the AI-assisted work produced initially:** The project had a pricing utility and tests, but the Week 2 project report recorded that automatic pricing was not yet connected to order creation because the machine-selection design was still being worked out.
-- **What was incomplete:** A pricing utility by itself did not provide the complete user-facing behavior of calculating a new order's price during order creation.
-- **What I did instead:** I continued the service and order-flow implementation so automatic pricing could be integrated with order creation, while retaining tests and compatibility for older records.
-- **How I checked it:** I reviewed the later order-service and automatic-pricing changes in the project history and checked the feature in the application.
-- **Related commits:**
-  - https://github.com/rnzcrt/LaundryLog/commit/275b930
-  - https://github.com/rnzcrt/LaundryLog/commit/e893acd
-  - https://github.com/rnzcrt/LaundryLog/commit/ac9075b
+- **Request summary:** Help document the LaundryLog mockups and design references.
+- **What the AI produced:** An earlier mockup-document draft used image paths that did not match the project's actual asset location.
+- **What was wrong or unsuitable:** The mockup images were stored under `docs/assets/`, while the earlier paths pointed to a different assets-folder location. Those references would not resolve correctly from the documented file location.
+- **What I did instead:** I used the actual `docs/assets/` folder structure when organizing the screenshot and mockup references.
+- **How I checked it:** I compared the paths with the project folder structure. The exact existence of every referenced image still needs a final check before submission.
+- **Related change:** README organization commit https://github.com/rnzcrt/LaundryLog/commit/c404665535130bd3eb3a30efaff4bc30804833d6
 
 ### Case 3 — The deployed add-on catalog needed a separate database migration
 
