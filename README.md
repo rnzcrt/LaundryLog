@@ -1,8 +1,8 @@
 # LaundryLog
 
-![Builds Full-Stack JavaScript and AI](https://img.shields.io/badge/Builds-Full--Stack%20JavaScript%20and%20AI-blue)
+[![Made with AI](https://img.shields.io/badge/Made_with-AI_assistance-blue)](AI-USAGE.md)
 
-**AI disclosure:** AI tools assisted with parts of planning, implementation, testing support, troubleshooting, and documentation. I reviewed and adapted work and document my use in [AI-USAGE.md](AI-USAGE.md).
+**AI disclosure:** I used ChatGPT heavily for feature work, pricing and workflow logic, and documentation drafts, and Claude for a backend code review and refactor. I supplied the requirements, reviewed and tested the results, and documented each use in [AI-USAGE.md](AI-USAGE.md).
 
 LaundryLog is a web-based laundry shop management system for shop owners and staff. It brings customer orders, machine assignments, payments, inventory, and daily reporting into one place.
 
