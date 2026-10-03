@@ -142,14 +142,15 @@ These examples are based on issues visible in the project work and conversation.
 - **How I checked it:** I checked the current `docs/02-mockup.md` references against the `docs/assets/` directory. The ten referenced image files are present, but `mockup-order-list-empty.png` is still referenced in the document and is not among those assets, so that image remains missing.
 - **Related change:** README organization commit https://github.com/rnzcrt/LaundryLog/commit/c404665535130bd3eb3a30efaff4bc30804833d6
 
-### Case 3 — The deployed add-on catalog needed a separate database migration
+### Case 3 — Production catalog required a separate migration
 
 - **Tool:** ChatGPT
 - **Request:** Help update the completion add-on catalog and its database migration.
-- **What the AI-assisted change produced:** The code and migration for the updated add-on catalog were committed, but the deployed application did not show the new catalog until the production database migration was applied.
-- **What was incomplete:** Deploying the application code did not, by itself, update the existing production database. The database needed the migration run separately.
-- **What I did instead:** I applied migration 011_completion_addon_catalog.sql to the production database using the migration process, then refreshed the deployed app and checked that the add-ons appeared.
-- **How I checked it:** The migration runner reported that migration 011 was applied and completed; I then confirmed the catalog appeared in the deployed app.
+- **What happened:** The AI-assisted code and migration were committed, but the deployed application did not show the updated catalog until the production database migration was applied.
+- **What the issue was:** The application code deployment alone did not update the existing production database. The migration had to be run separately.
+- **What I did:** I applied `011_completion_addon_catalog.sql` to the production database using the migration process, refreshed the deployed app, and checked that the add-ons appeared.
+- **How I checked it:** The migration runner reported that migration 011 was applied and completed, and I confirmed that the catalog appeared in the deployed app.
+- **Accuracy note:** This records an end-to-end deployment gap encountered while using AI-assisted code. It does not establish that the AI produced an incorrect migration or explicitly gave incorrect deployment instructions, so I am not presenting it as a proven AI-generated technical error.
 - **Related commit:** https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5
 
 ## 3. Who wrote what
@@ -190,6 +191,42 @@ The following backend changes were personally implemented by me. Claude provided
 - **Related files:** `src/utils/orderWorkflow.js`, pricing and order route logic, add-on catalog validation, and related tests. These files were AI-assisted; this entry describes my requirements, decisions, review, and verification rather than claiming sole authorship of their code.
 - **Related commit:** https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5
 
+### Additional personal code modifications
+
+The following are existing files that I modified. These notes describe my modifications, not authorship of every line in each file.
+
+#### Database utilities
+
+- **File:** `src/db.js`
+- **My contribution:** I modified the database utility file. The current file configures the PostgreSQL connection pool from `DATABASE_URL`, logs unexpected idle-client errors, provides a parameterized `query(text, params)` helper, and provides `withTransaction(callback)` to run statements in a transaction with commit, rollback, and client release.
+- **What I understand:** Parameterized query values are passed separately from SQL text. The transaction helper obtains a client, starts a transaction, commits if the callback succeeds, rolls back if it throws, and releases the client afterward.
+- **Related commit:** I have not identified a specific commit that isolates my changes to this file, so I am not assigning a commit link here.
+
+#### Frontend page structure
+
+- **File:** `public/index.html` (lines 1–280)
+- **My contribution:** I modified the first 280 lines of the existing HTML page. This portion includes the page header and navigation tabs, the dashboard and order-list area, inventory and customer forms, management sections for machines and add-ons, and the beginning of the reporting interface.
+- **What I understand:** The HTML provides the page structure and element IDs/classes that the frontend JavaScript uses to locate forms, buttons, panels, and display areas. It also includes labels and native form controls for staff input.
+- **Related commit:** I have not identified a specific commit that isolates my changes to this line range, so I am not assigning a commit link here.
+
+#### Frontend JavaScript setup
+
+- **File:** `public/app.js` (lines 1–60)
+- **My contribution:** I modified the opening section of the existing frontend JavaScript. This portion defines labels for laundry load types and order statuses, maps allowed next statuses, retrieves key page elements by their IDs, and defines a helper to create detail sections.
+- **What I understand:** The label maps keep user-facing status and service names consistent. The DOM references provide access to page elements, while `detailSection()` creates a section with a heading for order details.
+- **Related commit:** I have not identified a specific commit that isolates my changes to this line range, so I am not assigning a commit link here.
+
+#### Graceful server shutdown adapted from online references
+
+- **File:** `src/server.js`
+- **My contribution:** I searched online for graceful shutdown examples and adapted the approach for LaundryLog:
+  - [GeeksforGeeks — Graceful Shutdown in Distributed Systems and Microservices](https://www.geeksforgeeks.org/system-design/graceful-shutdown-in-distributed-systems-and-microservices/)
+  - [DEV Community — A Guide to Graceful Shutdowns](https://dev.to/cliffdoyle/a-guide-to-graceful-shutdowns-40mi)
+- **What I changed:** I adapted the `shutdown(signal)` function to log the received signal, close the HTTP server, end the PostgreSQL pool with `pool.end()`, and exit the process. I also registered handlers for `SIGINT` and `SIGTERM`.
+- **What I understand:** The handlers start a controlled shutdown when the process receives either signal. Closing the HTTP server stops it from accepting new connections and lets its close callback run before the database pool is ended.
+- **Attribution:** This is researched and adapted code, not code I claim to have invented or written entirely from scratch.
+- **Related commit:** I have not identified a specific commit that isolates this change, so I am not assigning a commit link here.
+
 ### Backend components I understand
 
 **Basic Authentication Middleware (`src/middleware/basicAuth.js`)**
@@ -217,5 +254,7 @@ The order workflow utility centralizes key business rules to maintain data integ
 - [x] Check the mockup image references against docs/assets/; note that mockup-order-list-empty.png is still missing.
 - [ ] Re-read src/middleware/basicAuth.js and src/utils/orderWorkflow.js and practice explaining them in my own words.
 - [x] Compare README setup commands with `package.json` scripts and Node.js engine requirement; compare documented API route families with the current route files. Exact request and response schemas still require checking against route implementations.
-- [ ] Commit the backend implementation changes from the reviewed project ZIP to GitHub and add the resulting commit link to the October 3 entry.
+- [ ] If the reviewed backend refactor is later committed to GitHub, add its real commit link to the October 3 entry.
+- [ ] Confirm that Case 3 is acceptable for the rubric, because it documents a deployment gap but not a verified incorrect AI suggestion.
+- [ ] Recheck that the descriptions of my modifications to `src/db.js`, `public/index.html`, `public/app.js`, and `src/server.js` match the changes I personally made.
 - [ ] Make any final edits needed so every statement matches my own experience.
