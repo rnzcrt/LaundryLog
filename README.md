@@ -9,7 +9,7 @@ LaundryLog is a web-based laundry shop management system for shop owners and sta
 - **Live application:** https://laundrylog.onrender.com
 - **API liveness:** https://laundrylog.onrender.com/healthz
 - **Source code:** https://github.com/rnzcrt/LaundryLog
-- **Demo video:** Add the public Google Drive link after recording.
+- **Demo video:** [View the Google Drive demo folder](https://drive.google.com/drive/folders/1OFrIH7C0KXr8tOqPmGT_rm7OcmP1iq77?usp=share_link)
 
 ## 1. Project overview
 
