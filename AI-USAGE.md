@@ -142,16 +142,17 @@ These examples are based on issues visible in the project work and conversation.
 - **How I checked it:** I checked the current `docs/02-mockup.md` references against the `docs/assets/` directory. The ten referenced image files are present, but `mockup-order-list-empty.png` is still referenced in the document and is not among those assets, so that image remains missing.
 - **Related change:** README organization commit https://github.com/rnzcrt/LaundryLog/commit/c404665535130bd3eb3a30efaff4bc30804833d6
 
-### Case 3 — Production catalog required a separate migration
+### Case 3 — Suggested UI did not fit the existing frontend code
 
 - **Tool:** ChatGPT
-- **Request:** Help update the completion add-on catalog and its database migration.
-- **What happened:** The AI-assisted code and migration were committed, but the deployed application did not show the updated catalog until the production database migration was applied.
-- **What the issue was:** The application code deployment alone did not update the existing production database. The migration had to be run separately.
-- **What I did:** I applied `011_completion_addon_catalog.sql` to the production database using the migration process, refreshed the deployed app, and checked that the add-ons appeared.
-- **How I checked it:** The migration runner reported that migration 011 was applied and completed, and I confirmed that the catalog appeared in the deployed app.
-- **Accuracy note:** This records an end-to-end deployment gap encountered while using AI-assisted code. It does not establish that the AI produced an incorrect migration or explicitly gave incorrect deployment instructions, so I am not presenting it as a proven AI-generated technical error.
-- **Related commit:** https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5
+- **Request summary:** Help with the user interface for the Kanban board, add-ons, and services.
+- **What the AI suggested:** The AI proposed UI changes for these areas, but the suggested implementation did not fit the HTML structure and JavaScript already used in LaundryLog.
+- **What was wrong or unsuitable:** Applying the suggestion as-is would not align with the existing frontend code and its structure.
+- **What I did instead:** I adjusted the layout to match the existing HTML and JavaScript rather than adopting the suggested UI unchanged.
+- **How I checked it:** This entry records the mismatch and layout adjustment I recall. I am not claiming a specific test result or a separate commit for this correction because I have not identified one.
+- **Accuracy note:** The available details establish a mismatch with the existing frontend structure, but do not specify the exact elements or code that conflicted. This description therefore stays at the UI/layout level.
+- **Related commit:** No specific commit identified.
+
 
 ## 3. Who wrote what
 
