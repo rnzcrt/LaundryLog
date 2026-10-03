@@ -1,5 +1,9 @@
 # LaundryLog
 
+![Builds Full-Stack JavaScript and AI](https://img.shields.io/badge/Builds-Full--Stack%20JavaScript%20and%20AI-blue)
+
+**AI disclosure:** AI tools assisted with parts of planning, implementation, testing support, troubleshooting, and documentation. I reviewed and adapted work and document my use in [AI-USAGE.md](AI-USAGE.md).
+
 LaundryLog is a web-based laundry shop management system for shop owners and staff. It brings customer orders, machine assignments, payments, inventory, and daily reporting into one place.
 
 - **Live application:** https://laundrylog.onrender.com
@@ -307,12 +311,7 @@ Potential future work includes payment corrections with an audit trail, browser-
 6APSI — Holy Angel University  
 GitHub: [rnzcrt](https://github.com/rnzcrt)
 
-## 13. AI use
 
-![Built with AI assistance](https://img.shields.io/badge/built%20with-AI%20assistance-0b5fff)
-
-AI tools, including ChatGPT, assisted with parts of planning, implementation, testing support, troubleshooting, and documentation. The project author is responsible for reviewing and understanding the submitted work. See [AI-USAGE.md](AI-USAGE.md) for the AI-use record; review its reconstructed entries and complete any remaining reflection sections so they accurately represent the actual work.
-
-## 14. License
+## 13. License
 
 This project is licensed under the MIT License. See the [LICENSE](LICENSE) file.
