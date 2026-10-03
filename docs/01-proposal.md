@@ -171,7 +171,7 @@ If demo mode is no longer used, state that it has been disabled and record the d
 
 **Risk:** Shared test data could cause tests to affect one another or produce misleading results.
 
-**Current status:** Reduced. Test fixtures were updated to isolate machines, orders, payments, history, loads, and reporting dates. The recorded test run passed 69 tests, with `npm run check` and `git diff --check` also passing at that time.
+**Current status:** Reduced. Test fixtures were updated to isolate machines, orders, payments, history, loads, and reporting dates. The latest test run reported 70 tests: 55 passed, 0 failed, and 15 skipped. `npm run check` and `git diff --check` were also reported passing at the time of the earlier review.
 
 ### 8. Security and Privacy
 

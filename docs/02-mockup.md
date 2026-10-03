@@ -125,12 +125,11 @@ Any element shown in the mockups that is not implemented in the final applicatio
 
 ## Assets
 
-Export mockup images into the repository's `assets/` directory using the filenames referenced above. The images should show realistic content and match the final application.
+Export mockup images into the repository's `docs/assets/` directory using the filenames referenced above. The images should show realistic content and match the final application.
 
 | Filename                         | Screen                |
 | -------------------------------- | --------------------- |
 | `mockup-order-list.png`          | Desktop Order List    |
-| `mockup-order-list-empty.png`    | Empty Order List      |
 | `mockup-new-order.png`           | New Order             |
 | `mockup-order-detail.png`        | Order Detail          |
 | `mockup-machines.png`            | Machine Management    |
@@ -146,9 +145,9 @@ Export mockup images into the repository's `assets/` directory using the filenam
 * [ ] All screens from the revised proposal are represented.
 * [ ] Mockups use the LaundryLog Design System.
 * [ ] Realistic sample content is used.
-* [ ] An empty state is included as a separate mockup.
+* [ ] Empty-state behavior is documented and checked against the implemented application.
 * [ ] Mobile layouts are shown.
-* [ ] Images are exported to `assets/`.
+* [ ] Images are exported to `docs/assets/`.
 * [ ] Image links work in the repository.
 * [ ] Mockups have been compared with the final application.
 * [ ] Unimplemented features are documented in the reflection journal.

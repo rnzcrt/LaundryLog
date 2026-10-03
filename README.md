@@ -193,6 +193,7 @@ Staff-facing API routes use HTTP Basic Authentication. The /healthz liveness end
 | Method | Endpoint | Purpose |
 | --- | --- | --- |
 | GET | /api/health | Check database connectivity |
+| GET | /healthz | Public liveness check |
 | GET, POST | /api/orders | List or create orders |
 | GET | /api/orders/:id | Retrieve an order and related history |
 | PATCH | /api/orders/:id/status | Advance an order's status |

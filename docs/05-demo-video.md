@@ -49,4 +49,4 @@ If the deployed application encounters an issue during recording, use a recordin
 
 ## Video Script
 
-See the accompanying script in the project documentation or use the script prepared for the demo recording.
+Prepare a spoken script from this outline before recording; no separate demo script is currently included in the docs.

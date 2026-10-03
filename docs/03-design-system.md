@@ -355,4 +355,4 @@ The mockups in `02-mockup.md` should follow this document and be compared with t
 * [ ] Desktop and mobile layouts are reviewed.
 * [ ] Keyboard accessibility and visible focus states are tested.
 * [ ] Documented tokens match the actual code.
-* [ ] Visual PDF is exported if required, and Figma source is linked.printf '\n' >> docs/03-design-system.md
+* [ ] Visual PDF is exported if required, and Figma source is linked.
