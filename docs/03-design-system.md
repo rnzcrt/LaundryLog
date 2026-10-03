@@ -333,8 +333,8 @@ The visual reference should demonstrate:
 * Responsive layouts.
 * Accessibility examples where applicable.
 
-**Visual PDF:** `03-design-system.pdf`
-**Figma source:** Add the actual Figma share link.
+**Visual PDF:** Not currently exported.
+**Figma source:** https://www.figma.com/design/wjQzXcK2bsT21CItqNcJrp/LaundryLog-Wireframes?node-id=13-36&t=A4vR3ztlLSA6iEys-1
 
 ## 12. Maintenance
 
@@ -355,4 +355,4 @@ The mockups in `02-mockup.md` should follow this document and be compared with t
 * [ ] Desktop and mobile layouts are reviewed.
 * [ ] Keyboard accessibility and visible focus states are tested.
 * [ ] Documented tokens match the actual code.
-* [ ] Visual PDF and Figma source are linked.
+* [ ] Visual PDF is exported if required, and Figma source is linked.printf '\n' >> docs/03-design-system.md

@@ -17,12 +17,11 @@ typography, spacing, reusable components, responsive layouts,
 and accessibility.
 
 - [Written Design System](03-design-system.md)
-- [Visual Design System (PDF)](03-design-system.pdf)
-- [Colour Tokens](design-system/colour-tokens.pdf)
-- [Typography and Spacing](design-system/type-spacing.pdf)
-- [Buttons and Tags](design-system/button-tag.pdf)
-- [Responsive Plan](design-system/responsive-plan.pdf)
-- [Figma Source](YOUR_FIGMA_LINK_HERE)
+- [Colour Tokens](design-system/Colour%20tokens.pdf)
+- [Typography and Spacing](design-system/Type%20+%20spacing%20group.pdf)
+- [Buttons and Tags](design-system/Button%20+%20Tag%20group.pdf)
+- [Responsive Plan](design-system/Responsive%20Plan.pdf)
+- [Figma Source](https://www.figma.com/design/wjQzXcK2bsT21CItqNcJrp/LaundryLog-Wireframes?node-id=13-36&t=A4vR3ztlLSA6iEys-1)
 
 ## Desktop Mockups
 
@@ -30,45 +29,49 @@ and accessibility.
 
 Displays orders and their current processing statuses, allowing staff to find and manage orders.
 
-![Order List](../assets/mockup-order-list.png)
+![Order List](assets/mockup-order-list.png)
 
 ### 2. New Order
 
 Allows staff to record a new customer order, select laundry services, enter load details, and view calculated pricing.
 
-![New Order](../assets/mockup-new-order.png)
+![New Order](assets/mockup-new-order.png)
 
 ### 3. Order Detail
 
 Displays customer and order information, processing status, machine assignments, payment history, outstanding balance, and available add-ons.
 
-![Order Detail](../assets/mockup-order-detail.png)
+![Order Detail](assets/mockup-order-detail.png)
 
 ### 4. Machine Management
 
 Displays machine types, capacities, availability, and current assignments.
 
-![Machine Management](../assets/mockup-machines.png)
+![Machine Management](assets/mockup-machines.png)
 
 ### 5. Customer Management
 
 Displays customer records and relevant contact and order information.
 
-![Customer Management](../assets/mockup-customers.png)
+![Customer Management](assets/mockup-customers.png)
 
 ### 6. Inventory Management
 
 Displays supported laundry products, stock information, and inventory management controls.
 
-![Inventory Management](../assets/mockup-inventory.png)
+![Inventory Management](assets/mockup-inventory.png)
 
 ### 7. Sales and Collections Reporting
 
 Displays recorded sales and collection information to help staff review shop activity.
 
-![Sales and Collections](../assets/mockup-reports.png)
+![Sales and Collections](assets/mockup-reports.png)
 
 ## Empty State
+
+**Suggested message:**
+
+"No orders found. Try another filter or create a new order."
 
 ### Order List — No Matching Orders
 
@@ -76,27 +79,21 @@ The empty state represents what staff see when no orders match the selected filt
 
 This is a separately designed mockup and does not require deleting any records from the production database. It can be created using a design tool or a separate mock-data view.
 
-**Suggested message:**
-
-"No orders found. Try another filter or create a new order."
-
-![Empty Order List](../assets/mockup-order-list-empty.png)
-
 ## Mobile Mockups
 
 The mobile layouts adapt the interface to narrow screens, stacking content into a single column and avoiding horizontal scrolling at a 375px viewport width.
 
 ### Mobile Order List
 
-![Mobile Order List](../assets/mockup-mobile-order-list.png)
+![Mobile Order List](assets/mockup-mobile-order-list.png)
 
 ### Mobile Order Detail
 
-![Mobile Order Detail](../assets/mockup-mobile-order-detail.png)
+![Mobile Order Detail](assets/mockup-mobile-order-detail.png)
 
 ### Mobile New Order
 
-![Mobile New Order](../assets/mockup-mobile-new-order.png)
+![Mobile New Order](assets/mockup-mobile-new-order.png)
 
 ## Accessibility
 
