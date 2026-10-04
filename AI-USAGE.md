@@ -151,7 +151,7 @@ What I can point to in the git history as my own work is below. It is small comp
 
 - **File:** `src/utils/orderWorkflow.js`
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5 (first added in `efcf044`)
-- **What it does and why we kept it:** ChatGPT wrote this file. It holds the rules for moving an order through the machine stages and checks everything before anything is written to the database.
+- **What it does and why I kept it:** ChatGPT wrote this file. It holds the rules for moving an order through the machine stages and checks everything before anything is written to the database.
   - `requiredMachineKind` says which machine an order needs at each stage: a washer for wash-and-fold or wash-only, a dryer for wash-and-fold or dry-only.
   - `validateMachineAssignments` rejects an empty list, the same machine twice, bad ids, and weights outside 0.01 to 100 kg or with more than two decimals. It converts weights to whole centi-kilograms and checks that the loads add up exactly to the order weight.
   - `validateCompletionChoices` makes staff either add add-ons or explicitly skip them. It rejects "skip" with add-ons selected, "add" with none, duplicate add-ons, and quantities outside 1 to 100.
