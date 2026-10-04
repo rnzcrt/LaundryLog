@@ -1,14 +1,14 @@
-# LaundryLog Demo Video
+# Demo video
 
-**Status:** Planned — video not yet recorded
-**Target length:** 3–5 minutes
-**Format:** Screen recording with my own voice
+**Video:** https://drive.google.com/file/d/1RulvGFkbe7TwSUuY8FcpP8CLDcVocCzV/view?usp=sharing
+**All presentation files (video, slides, image):** https://drive.google.com/drive/folders/1OFrIH7C0KXr8tOqPmGT_rm7OcmP1iq77?usp=sharing
+**Status:** Recorded; 4:40 Minutes, including the AI usage segment. 
 **Live application:** https://laundrylog.onrender.com
 **GitHub repository:** https://github.com/rnzcrt/LaundryLog
 
 ## Demo Video Link
 
-**Link:** [Add the public Google Drive video link after recording]
+**Link:** https://drive.google.com/file/d/1RulvGFkbe7TwSUuY8FcpP8CLDcVocCzV/view?usp=sharing
 
 The video will be recorded using the deployed LaundryLog application rather than the local development environment.
 

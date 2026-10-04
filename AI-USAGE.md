@@ -109,37 +109,48 @@ I checked the old versions of each file with `git show 685dd12^:<file>`. The ear
 
 ## 3. Who wrote what
 
-AI helped with a lot of this project, and I do not claim every line in the linked commits. Below are the parts I changed myself and the one AI-written file I understand best, explained the way I would explain them out loud.
+The first commit (`c7df593`) contains the starter LaundryLog app from the course archive: the Express app, routes, validators, database code, frontend, schema and styling. I did not write that and I do not claim it. Most later features were built with ChatGPT (section 1). The October 3 backend refactor (`basicAuth.js`, `errorHandler.js`, `orders.js`) came from a Claude review; I applied and tested it, but I do not list it here as code I wrote.
 
-### 3.1 Parts I implemented myself
+What I can point to in the git history as my own work is below. It is small compared with the whole project, and I would rather say that than claim more.
 
-**`src/middleware/basicAuth.js` — the login gate** (added in `685d9fa`, my refactor in `685dd12`)
-This runs before every request except `/healthz`. It reads the username and password from environment variables, so the secrets are never in the code. If they are missing, it returns a 500. Otherwise it decodes the `Authorization` header and splits it at the first `:`, so a password can contain a colon. Then it compares the username and password. In my refactor I made both comparisons always run and put all the 401 responses into one helper, so they stay the same.
-Commit: https://github.com/rnzcrt/LaundryLog/commit/685dd127a0455ea201b3768b44e93e4e8a2ef3ee
+### Written by me
 
-**`src/middleware/errorHandler.js` — one place for error responses**
-Every error in the app ends up here. If it is my own `HttpError`, I send back its status and message. Bad JSON now gives a 400 and a too-large body gives a 413. Postgres errors are turned into useful statuses, like 409 for a duplicate and 400 for a bad reference. Anything unexpected is logged briefly and returns a plain 500, so internal details never reach the user.
-Commit: https://github.com/rnzcrt/LaundryLog/commit/685dd127a0455ea201b3768b44e93e4e8a2ef3ee
+**Customer search and order history (frontend)**
+- **File:** `public/app.js` (about 114 lines added) and `public/index.html` (16 lines)
+- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/247c616
+- **What it does and why it is built this way:** I planned this with ChatGPT, then wrote the frontend code myself and reused the customer endpoints that already existed in `src/routes/customers.js`. `loadCustomers` builds the query string with `URLSearchParams`, skips it when the box is empty, calls `/api/customers?q=...`, and throws if the response is not OK. `escapeHtml` swaps `& < > " '` for safe codes before names and phones go into `innerHTML`, so a customer named `<script>` cannot run code on the page. `renderCustomers` draws one card per customer with a "View history" button that stores the customer id in `data-customer-id`. I attached one click listener to the whole list instead of one per button, and it uses `event.target.closest('.customer-history')`, so it also works for cards drawn later after a new search. Typing in the box runs the search on every keystroke. `openCustomerHistory` loads `/api/customers/:id` and builds the dialog with `createElement` and `textContent`, and it shows "No orders yet." for a customer with no orders. The customer list was later redrawn as a table in `bb591f0` (ChatGPT); this commit is my original version.
 
-**`src/routes/orders.js` — splitting up the status handler**
-The route that moves an order to its next stage had become one huge function. I split it into smaller steps: assigning machines, starting queued washer loads, finishing dryer loads, and handling add-ons at completion. The machine-load changes run inside `db.withTransaction`, so if any step fails, everything is rolled back and an order is never left half-updated. I also moved the repeated kg-to-centi-kg conversion into one helper so weights are compared as whole numbers instead of decimals.
-Commit: https://github.com/rnzcrt/LaundryLog/commit/685dd127a0455ea201b3768b44e93e4e8a2ef3ee
+**Singular item label**
+- **File:** `public/app.js` (`measure()`)
+- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/5d12768
+- **What it does and why it is built this way:** An order with one item used to show "1 items". I changed the template string so it adds an "s" only when the count is not 1. It is a three-line fix because the rest of the function already worked.
 
-**`src/db.js` — database access** (only commit: `c7df593`, from the course's M8A1 setup)
-I did not write this file from scratch, so I am not claiming it. I can explain it: it makes one PostgreSQL connection pool from `DATABASE_URL` and refuses to start without it. `query` sends values separately from the SQL text, which prevents SQL injection. `withTransaction` runs `BEGIN`, then my function, then `COMMIT`; if anything throws it runs `ROLLBACK`, and it always releases the client at the end so connections are not leaked.
+**First automated API tests and the `npm test` script**
+- **File:** `test/orders.test.js` (first version) and `package.json`
+- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/dd5a735
+- **What it does and why it is built this way:** Two tests I first checked by hand: asking for an order that does not exist returns 404, and posting an empty order returns 400 with a list of validation errors. A small `request()` helper starts the app on a random free port (`listen(0)`), makes the call with `fetch`, and always closes the server in `finally`, so tests do not collide or leave the port open. I used Node's built-in test runner (`node --test`) so no extra framework is needed.
 
-### 3.2 Requirements and decisions that were mine
+**Preflight check script**
+- **File:** `scripts/check.js`
+- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/c7df593 (later versions only add more files to its list)
+- **What it does and why it is built this way:** It confirms that every required file exists, then walks `src`, `public` and `scripts` and runs `node --check` on each `.js` file, so a missing file or a syntax error shows up before I deploy. It exits with an error and a list of the missing files if anything is wrong.
 
-I decided the order stages, the Regular and Titan capacities and prices, which folding is included and which is optional, the add-on choices, payment history, and how outstanding balances work. I used these rules to check every AI suggestion and to test the deployed app. This is my design and checking work, not sole authorship of the code.
-Related commit: https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5
+**Ignore rules and example environment file**
+- **File:** `.gitignore`, `.env.example`
+- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/c7df593
+- **What it does and why it is built this way:** `.gitignore` keeps `.env` (which holds my database password) and `node_modules` out of the repository. `.env.example` shows which variables the app needs, with a placeholder password instead of a real one.
 
-### 3.3 The AI-written piece I understand best: `src/utils/orderWorkflow.js`
+### The AI-written part I understand best
 
-ChatGPT wrote this file (first added in `efcf044`, extended in `543a856`). It holds the rules for moving an order through the machine stages, and it checks everything before anything is written to the database.
+- **File:** `src/utils/orderWorkflow.js`
+- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5 (first added in `efcf044`)
+- **What it does and why we kept it:** ChatGPT wrote this file. It holds the rules for moving an order through the machine stages and checks everything before anything is written to the database.
+  - `requiredMachineKind` says which machine an order needs at each stage: a washer for wash-and-fold or wash-only, a dryer for wash-and-fold or dry-only.
+  - `validateMachineAssignments` rejects an empty list, the same machine twice, bad ids, and weights outside 0.01 to 100 kg or with more than two decimals. It converts weights to whole centi-kilograms and checks that the loads add up exactly to the order weight.
+  - `validateCompletionChoices` makes staff either add add-ons or explicitly skip them. It rejects "skip" with add-ons selected, "add" with none, duplicate add-ons, and quantities outside 1 to 100.
 
-- `requiredMachineKind` says which machine an order needs at each stage. Washing needs a washer for wash-and-fold or wash-only, and drying needs a dryer for wash-and-fold or dry-only.
-- `validateMachineAssignments` checks the list of machines and weights. It rejects an empty list, the same machine twice, bad ids, and weights outside 0.01 to 100 kg or with more than two decimals. It converts weights to whole centi-kilograms and then checks that the loads add up exactly to the order weight.
-- `validateCompletionChoices` makes staff choose at completion: add add-ons or explicitly skip them. It rejects "skip" with add-ons selected, "add" with none, duplicate add-ons, and quantities outside 1 to 100.
+  I kept it because the rules match how the shop works, and checking in a plain utility before touching the database keeps the route code short and easy to test.
 
-I kept it because the rules match how the shop works. Doing the checks in a plain utility before touching the database keeps the route code short and makes the rules easy to test.
-Commits: https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5 (and `efcf044`)
+### Requirements and decisions that were mine
+
+I decided the order stages, the Regular and Titan capacities and prices, which folding is included and which is optional, the add-on choices, payment history, and how outstanding balances work. I used these rules to check every AI suggestion and to test the deployed app. This is design and checking work, not sole authorship of the code.

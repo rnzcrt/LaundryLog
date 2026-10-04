@@ -9,7 +9,7 @@ LaundryLog is a web-based laundry shop management system for shop owners and sta
 - **Live application:** https://laundrylog.onrender.com
 - **API liveness:** https://laundrylog.onrender.com/healthz
 - **Source code:** https://github.com/rnzcrt/LaundryLog
-- **Demo video:** [View the Google Drive demo folder](https://drive.google.com/drive/folders/1OFrIH7C0KXr8tOqPmGT_rm7OcmP1iq77?usp=share_link)
+- **Demo video:** [View the Google Drive demo folder](https://drive.google.com/file/d/1RulvGFkbe7TwSUuY8FcpP8CLDcVocCzV/view?usp=sharing)
 
 ## 1. Project overview
 
@@ -215,7 +215,6 @@ Staff-facing API routes use HTTP Basic Authentication. The /healthz liveness end
 
 The orders endpoint supports status and customer-search filters. The load-plan endpoint accepts a machine capacity value. The reports endpoint accepts from and to dates. Refer to the route files in src/routes/ for exact request fields, validation rules, and response shapes.
 
-## 7. Project structure
 ## 7. Project structure
 
     LaundryLog/
