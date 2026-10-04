@@ -31,18 +31,6 @@ The video will be recorded using the deployed LaundryLog application rather than
 * Optional add-ons at order completion
 * Customer and inventory management, if time allows
 
-## Recording Checklist
-
-* [ ] Open the deployed application in advance and confirm it is responding.
-* [ ] Prepare realistic demo data in advance.
-* [ ] Confirm the main workflow works from beginning to end.
-* [ ] Close unrelated browser tabs and hide personal information.
-* [ ] Ensure no `.env` file or credentials are visible.
-* [ ] Practice the full script and keep the recording within 3–5 minutes.
-* [ ] Record the video with my own voice.
-* [ ] Upload the video to Google Drive with public viewing access.
-* [ ] Add the video link to this document and the main README.
-
 ## Fallback Plan
 
 If the deployed application encounters an issue during recording, use a recording of the working application as a fallback. Screenshots may be used if a recording is unavailable, while clearly explaining any issue encountered.

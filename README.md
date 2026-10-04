@@ -256,35 +256,35 @@ The orders endpoint supports status and customer-search filters. The load-plan e
     ├── LICENSE                  Project license
     └── README.md
     
-## 8. Screenshots and design references
+## 8. Screenshots
 
-Screenshots are stored in docs/assets/.
+These are screenshots of the running application. They are stored in `docs/assets/`.
 
 ### Desktop
 
-![Order list mockup](docs/assets/order-list.png)
+![Order list and dashboard](docs/assets/order-list.png)
 
-![New order mockup](docs/assets/new-order.png)
+![New order form](docs/assets/new-order.png)
 
-![Order detail mockup](docs/assets/order-detail.png)
+![Order detail with payments and machine loads](docs/assets/order-detail.png)
 
-![Machine management mockup](docs/assets/machines.png)
+![Machine management](docs/assets/machines.png)
 
-![Customer management mockup](docs/assets/customers.png)
+![Customer management](docs/assets/customers.png)
 
-![Inventory management mockup](docs/assets/inventory.png)
+![Inventory management](docs/assets/inventory.png)
 
-![Reports mockup](docs/assets/reports.png)
+![Sales and collections report](docs/assets/reports.png)
 
 ### Mobile
 
-![Mobile order list mockup](docs/assets/mobile-order-list.png)
+![Mobile order list](docs/assets/mobile-order-list.png)
 
-![Mobile new order mockup](docs/assets/mobile-new-order.png)
+![Mobile new order form](docs/assets/mobile-new-order.png)
 
-![Mobile order detail mockup](docs/assets/mobile-order-detail.png)
+![Mobile order detail](docs/assets/mobile-order-detail.png)
 
-Design references are available in docs/design-system/. Mockups are design references; check the live application to see the currently implemented interface.
+Design references (mockups and design-system exports) are in `docs/02-mockup.md` and `docs/design-system/`. The live application is the source of truth for the implemented interface.
 
 ## 9. Deployment notes
 
