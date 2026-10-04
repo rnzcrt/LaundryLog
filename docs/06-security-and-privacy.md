@@ -72,21 +72,6 @@ The project should clearly explain what customer information is collected and wh
 * **Authentication:** Basic authentication using environment variables was added during development. Its current production configuration and coverage across routes should be verified.
 * **Database hosting:** The hosted PostgreSQL database uses a free tier with a stated expiry date of October 19, 2026. The database should be migrated or upgraded before that date to avoid losing access to the hosted data.
 
-## 5. Final Verification
-
-Before submitting the project:
-
-* [ ] Run `git check-ignore -v .env`.
-* [ ] Run `git ls-files | grep -iE '\.env$|\.pem$|id_rsa'` and confirm it prints nothing.
-* [ ] Review the repository and Git history for accidentally committed credentials.
-* [ ] Review SQL queries for parameterized values.
-* [ ] Check validation and text-length limits across all relevant routes.
-* [ ] Verify CORS, Helmet, production settings, and error responses.
-* [ ] Run `npm audit` and review the results.
-* [ ] Review seed data, screenshots, logs, and demo materials for personal information.
-* [ ] Confirm that the app's data collection is explained.
-* [ ] Confirm that the hosted database has been migrated or upgraded before its expiry.
-
-## 6. Security Reflection
+## 5. Security Reflection
 
 The main privacy risk in LaundryLog is the customer information stored with orders, especially because the application is publicly deployed. I used environment variables for configuration and added backend validation and authentication during development. I will use fictional customer data in the public demonstration and review the repository and deployment settings before submission. One trade-off is that this is a course project rather than a fully hardened commercial system, so its authentication, access controls, and privacy protections still need to be reviewed before it is used with real customer information.

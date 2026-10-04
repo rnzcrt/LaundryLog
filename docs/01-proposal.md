@@ -123,11 +123,10 @@ The project uses Render's free-tier services. Free-tier limitations, including d
 
 ## Demo Mode
 
-**Demo mode shutdown date: TO BE CONFIRMED**
+**Demo mode: not used. There is no shutdown date because it was never turned on.**
 
-The exact date for disabling demo mode was not available in the project information reviewed for this update. Confirm whether demo mode is enabled and record the agreed shutdown date here.
+LaundryLog has no simulated backend. The frontend in `public/` calls the Express API on the same Render service, and the API reads and writes the hosted PostgreSQL database. There is no mock API, no `localStorage` data layer, and no `VITE_USE_MOCK_API` setting in this repository. Every order, payment and stock change shown on the live site is stored in PostgreSQL.
 
-If demo mode is no longer used, state that it has been disabled and record the date. Do not leave demo mode enabled unintentionally after the presentation or final submission.
 
 ## Risks and Changes
 

@@ -29,43 +29,43 @@ and accessibility.
 
 Displays orders and their current processing statuses, allowing staff to find and manage orders.
 
-![Order List](assets/mockup-order-list.png)
+![Order List](assets/order-list.png)
 
 ### 2. New Order
 
 Allows staff to record a new customer order, select laundry services, enter load details, and view calculated pricing.
 
-![New Order](assets/mockup-new-order.png)
+![New Order](assets/new-order.png)
 
 ### 3. Order Detail
 
 Displays customer and order information, processing status, machine assignments, payment history, outstanding balance, and available add-ons.
 
-![Order Detail](assets/mockup-order-detail.png)
+![Order Detail](assets/order-detail.png)
 
 ### 4. Machine Management
 
 Displays machine types, capacities, availability, and current assignments.
 
-![Machine Management](assets/mockup-machines.png)
+![Machine Management](assets/machines.png)
 
 ### 5. Customer Management
 
 Displays customer records and relevant contact and order information.
 
-![Customer Management](assets/mockup-customers.png)
+![Customer Management](assets/customers.png)
 
 ### 6. Inventory Management
 
 Displays supported laundry products, stock information, and inventory management controls.
 
-![Inventory Management](assets/mockup-inventory.png)
+![Inventory Management](assets/inventory.png)
 
 ### 7. Sales and Collections Reporting
 
 Displays recorded sales and collection information to help staff review shop activity.
 
-![Sales and Collections](assets/mockup-reports.png)
+![Sales and Collections](assets/reports.png)
 
 ## Empty State
 
@@ -85,15 +85,15 @@ The mobile layouts adapt the interface to narrow screens, stacking content into 
 
 ### Mobile Order List
 
-![Mobile Order List](assets/mockup-mobile-order-list.png)
+![Mobile Order List](assets/mobile-order-list.png)
 
 ### Mobile Order Detail
 
-![Mobile Order Detail](assets/mockup-mobile-order-detail.png)
+![Mobile Order Detail](assets/mobile-order-detail.png)
 
 ### Mobile New Order
 
-![Mobile New Order](assets/mockup-mobile-new-order.png)
+![Mobile New Order](assets/mobile-new-order.png)
 
 ## Accessibility
 
@@ -139,15 +139,3 @@ Export mockup images into the repository's `docs/assets/` directory using the fi
 | `mockup-mobile-order-list.png`   | Mobile Order List     |
 | `mockup-mobile-order-detail.png` | Mobile Order Detail   |
 | `mockup-mobile-new-order.png`    | Mobile New Order      |
-
-## Final Review
-
-* [ ] All screens from the revised proposal are represented.
-* [ ] Mockups use the LaundryLog Design System.
-* [ ] Realistic sample content is used.
-* [ ] Empty-state behavior is documented and checked against the implemented application.
-* [ ] Mobile layouts are shown.
-* [ ] Images are exported to `docs/assets/`.
-* [ ] Image links work in the repository.
-* [ ] Mockups have been compared with the final application.
-* [ ] Unimplemented features are documented in the reflection journal.

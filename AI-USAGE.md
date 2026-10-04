@@ -4,6 +4,13 @@ I used AI heavily on this project: ChatGPT for most feature work, pricing and wo
 
 ## 1. How I used AI
 
+### 2026-09-25 — Customer search and order history (planning)
+- **Tool:** ChatGPT
+- **Asked for:** A plan for searching customers by name or phone and showing a customer's order history, using the customer endpoints that already existed.
+- **Came back:** An outline of the steps and the existing endpoints to reuse. I wrote the frontend code myself (see section 3).
+- **Kept / changed:** Followed the outline; wrote and tested the code in `public/app.js` and `public/index.html`.
+- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/247c616
+
 ### 2026-09-27 — Load-based laundry pricing
 - **Tool:** ChatGPT
 - **Asked for:** Help pricing laundry by service, machine type and load requirements.
@@ -71,7 +78,7 @@ I used AI heavily on this project: ChatGPT for most feature work, pricing and wo
 - **Tool:** Claude (Anthropic)
 - **Asked for:** A review and refactor of the backend from a ZIP of the repository.
 - **Came back:** A plan to split the long order-status handler in `src/routes/orders.js`, use the transaction helper for machine-load routes, simplify `src/middleware/basicAuth.js`, return proper JSON-error statuses from `src/middleware/errorHandler.js`, and fix a query that left out the machine name.
-- **Kept / changed:** I made the changes in those three files plus `test/security.test.js` and checked them against the intended behaviour.
+- **Kept / changed:** I applied the suggested changes to those three files and `test/security.test.js` and checked them against the intended behaviour. The refactored code itself came from Claude (see section 3).
 - **Testing:** Full run: 70 tests, 55 passed, 0 failed, 15 skipped. Skipped tests are not passes; the 15 are the PostgreSQL integration tests, which need `TEST_DATABASE_URL`.
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/685dd127a0455ea201b3768b44e93e4e8a2ef3ee
 
@@ -90,21 +97,21 @@ I checked the old versions of each file with `git show 685dd12^:<file>`. The ear
 - **Tool:** ChatGPT-assisted code; found during the Claude review on 2026-10-03.
 - **What it gave me:** An error handler that translated my own `HttpError` and Postgres error codes but had no case for body-parser errors. A malformed or oversized JSON request therefore fell through to the catch-all and returned `500 Something went wrong on the server`.
 - **What was wrong:** A 500 means "the server broke", but the client sent bad data. It hides the real problem from the caller and fills the logs with fake server errors.
-- **What I did instead:** `errorHandler.js` now checks `err.type`: `entity.parse.failed` returns `400` and `entity.too.large` returns `413`, each with a JSON message. I updated `test/security.test.js` to cover it.
+- **The fix:** `errorHandler.js` now checks `err.type`: `entity.parse.failed` returns `400` and `entity.too.large` returns `413`, each with a JSON message. I updated `test/security.test.js` to cover it.
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/685dd127a0455ea201b3768b44e93e4e8a2ef3ee
 
 ### Case 2 — Login checks could leak whether the username was right
 - **Tool:** ChatGPT-assisted code; found during the Claude review on 2026-10-03.
 - **What it gave me:** Basic Auth that checked `!safeEqual(username, expectedUser) || !safeEqual(password, expectedPassword)`, wrapped `Buffer.from(...)` in a `try/catch`, and repeated the same `res.set('WWW-Authenticate', ...)` plus 401 response in four places.
 - **What was wrong:** Because of the `||`, a wrong username skipped the password comparison, so the two failure cases did slightly different work. The helper was built to be constant-time, but the check around it wasn't. The `try/catch` was dead code because `Buffer.from(string, 'base64')` does not throw on bad input, and the copy-pasted rejections invited inconsistencies. This is a small hardening fix, not a big hole: `safeEqual` still returns early when the lengths differ.
-- **What I did instead:** `basicAuth.js` now stores both comparison results first, then rejects if either is false. The `try/catch` is gone and every failure goes through one `rejectWith` helper.
+- **The fix:** `basicAuth.js` now stores both comparison results first, then rejects if either is false. The `try/catch` is gone and every failure goes through one `rejectWith` helper.
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/685dd127a0455ea201b3768b44e93e4e8a2ef3ee
 
 ### Case 3 — The machine lookup left out `name`, so errors never said which machine
 - **Tool:** ChatGPT-assisted code; found during the Claude review on 2026-10-03.
 - **What it gave me:** In the old status handler the lookup was `SELECT id, machine_kind, capacity_kg, status FROM machines WHERE id = ANY($1)`, with no `name` column. The error below it used `${machine.name || 'Selected machine'}`.
 - **What was wrong:** Since `name` was never selected, `machine.name` was always `undefined`, so the fallback always ran and the message always said "Selected machine is unavailable or too small for its assigned load". The `|| 'Selected machine'` fallback hid the bug, so no test or crash showed it. Staff could not tell which machine was the problem.
-- **What I did instead:** The refactored lookup is `SELECT id, name, machine_kind, capacity_kg, status …`, and the message uses `${machine.name}` directly, so it names the actual machine. I removed the fallback so a missing name can't be hidden again.
+- **The fix:** The refactored lookup is `SELECT id, name, machine_kind, capacity_kg, status …`, and the message uses `${machine.name}` directly, so it names the actual machine. The fallback was removed so a missing name can't be hidden again.
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/685dd127a0455ea201b3768b44e93e4e8a2ef3ee
 
 ## 3. Who wrote what
@@ -133,7 +140,7 @@ What I can point to in the git history as my own work is below. It is small comp
 **Preflight check script**
 - **File:** `scripts/check.js`
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/c7df593 (later versions only add more files to its list)
-- **What it does and why it is built this way:** It confirms that every required file exists, then walks `src`, `public` and `scripts` and runs `node --check` on each `.js` file, so a missing file or a syntax error shows up before I deploy. It exits with an error and a list of the missing files if anything is wrong.
+- **What it does and why it is built this way:** (`c7df593` is one big commit that holds both the starter archive and my Week 1 additions, so git cannot separate them; my Week 1 report lists these files as mine.) It confirms that every required file exists, then walks `src`, `public` and `scripts` and runs `node --check` on each `.js` file, so a missing file or a syntax error shows up before I deploy. It exits with an error and a list of the missing files if anything is wrong.
 
 **Ignore rules and example environment file**
 - **File:** `.gitignore`, `.env.example`

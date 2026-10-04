@@ -341,18 +341,3 @@ The visual reference should demonstrate:
 Update the design system whenever the application changes its colours, typography, spacing, components, interaction states, or responsive behavior.
 
 The mockups in `02-mockup.md` should follow this document and be compared with the final implemented application.
-
-## 13. Design System Checklist
-
-* [ ] All colours have names, tokens, and hex values.
-* [ ] Contrast has been checked.
-* [ ] Actual font family has been recorded.
-* [ ] Typography sizes match the application.
-* [ ] A consistent spacing scale is used.
-* [ ] Reusable components are documented.
-* [ ] Normal, hover, focus, disabled, and loading states are reviewed.
-* [ ] Loading, empty, error, and data states are documented.
-* [ ] Desktop and mobile layouts are reviewed.
-* [ ] Keyboard accessibility and visible focus states are tested.
-* [ ] Documented tokens match the actual code.
-* [ ] Visual PDF is exported if required, and Figma source is linked.

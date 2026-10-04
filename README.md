@@ -9,7 +9,7 @@ LaundryLog is a web-based laundry shop management system for shop owners and sta
 - **Live application:** https://laundrylog.onrender.com
 - **API liveness:** https://laundrylog.onrender.com/healthz
 - **Source code:** https://github.com/rnzcrt/LaundryLog
-- **Demo video:** [View the Google Drive demo folder](https://drive.google.com/file/d/1RulvGFkbe7TwSUuY8FcpP8CLDcVocCzV/view?usp=sharing)
+- **Demo video:** [Watch the demo video on Google Drive](https://drive.google.com/file/d/1RulvGFkbe7TwSUuY8FcpP8CLDcVocCzV/view?usp=sharing)
 
 ## 1. Project overview
 
@@ -258,31 +258,31 @@ The orders endpoint supports status and customer-search filters. The load-plan e
     
 ## 8. Screenshots and design references
 
-Mockup screenshots are stored in docs/assets/.
+Screenshots are stored in docs/assets/.
 
 ### Desktop
 
-![Order list mockup](docs/assets/mockup-order-list.png)
+![Order list mockup](docs/assets/order-list.png)
 
-![New order mockup](docs/assets/mockup-new-order.png)
+![New order mockup](docs/assets/new-order.png)
 
-![Order detail mockup](docs/assets/mockup-order-detail.png)
+![Order detail mockup](docs/assets/order-detail.png)
 
-![Machine management mockup](docs/assets/mockup-machines.png)
+![Machine management mockup](docs/assets/machines.png)
 
-![Customer management mockup](docs/assets/mockup-customers.png)
+![Customer management mockup](docs/assets/customers.png)
 
-![Inventory management mockup](docs/assets/mockup-inventory.png)
+![Inventory management mockup](docs/assets/inventory.png)
 
-![Reports mockup](docs/assets/mockup-reports.png)
+![Reports mockup](docs/assets/reports.png)
 
 ### Mobile
 
-![Mobile order list mockup](docs/assets/mockup-mobile-order-list.png)
+![Mobile order list mockup](docs/assets/mobile-order-list.png)
 
-![Mobile new order mockup](docs/assets/mockup-mobile-new-order.png)
+![Mobile new order mockup](docs/assets/mobile-new-order.png)
 
-![Mobile order detail mockup](docs/assets/mockup-mobile-order-detail.png)
+![Mobile order detail mockup](docs/assets/mobile-order-detail.png)
 
 Design references are available in docs/design-system/. Mockups are design references; check the live application to see the currently implemented interface.
 
