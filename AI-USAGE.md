@@ -125,7 +125,7 @@ I checked the old versions of each file with `git show 685dd12^:<file>`. The ear
 
 The first commit (`c7df593`) contains the starter LaundryLog app from the course archive: the Express app, routes, validators, database code, frontend, schema and styling. I did not write that and I do not claim it. Most later features were built with ChatGPT (section 1). The October 3 backend refactor (`basicAuth.js`, `errorHandler.js`, `orders.js`) came from a Claude review; I applied and tested it, but I do not list it here as code I wrote.
 
-What I can point to in the git history as my own work is below. It is small compared with the whole project, and I would rather say that than claim more. I did not write the server routes, validators or application queries myself, so I am not claiming one fifth of the Node and Express code. What I wrote myself is about 105 lines of Postgres SQL (three migration pieces, roughly 3% of the 3,500 lines of backend code), a frontend feature, two small API tests and the check script listed below.
+What I can point to in the git history as my own work is below. It is small compared with the whole project, and I would rather say that than claim more. I did not write the server routes, validators or application queries myself, so I am not claiming one fifth of the Node and Express code. What I wrote myself is about 100 lines of Postgres SQL (three migration pieces, roughly 3% of the 3,500 lines of backend code), a frontend feature, two small API tests and the check script listed below.
 
 ### Written by me
 

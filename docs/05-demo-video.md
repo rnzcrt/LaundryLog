@@ -10,7 +10,6 @@
 
 **Link:** https://drive.google.com/file/d/1RulvGFkbe7TwSUuY8FcpP8CLDcVocCzV/view?usp=sharing
 
-The video will be recorded using the deployed LaundryLog application rather than the local development environment.
 
 ## Demo Outline
 
