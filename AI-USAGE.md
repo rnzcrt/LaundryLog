@@ -11,6 +11,13 @@ I used AI heavily on this project: ChatGPT for most feature work, pricing and wo
 - **Kept / changed:** Followed the outline; wrote and tested the code in `public/app.js` and `public/index.html`.
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/247c616
 
+### 2026-09-26 — Machine inventory and load assignment
+- **Tool:** ChatGPT
+- **Asked for:** Help planning a machine inventory and machine-load assignment feature that keeps the existing database and app structure.
+- **Came back:** A plan and the code for the machine API and the order-route changes (`src/routes/machines.js`, `src/routes/orders.js`, `src/validators/orderValidators.js`).
+- **Kept / changed:** I wrote the database migration `db/migrations/001_add_machines.sql` myself (see section 3). I tested the authenticated machine API, a valid load, a load that was too heavy for a machine, and a machine that was already in use.
+- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/66c8b4e
+
 ### 2026-09-27 — Load-based laundry pricing
 - **Tool:** ChatGPT
 - **Asked for:** Help pricing laundry by service, machine type and load requirements.
@@ -36,7 +43,7 @@ I used AI heavily on this project: ChatGPT for most feature work, pricing and wo
 - **Tool:** ChatGPT
 - **Asked for:** Service options, automatic pricing, and compatibility with existing records.
 - **Came back:** Service handling, validation, pricing and tests.
-- **Kept / changed:** Checked service options and that older records still work.
+- **Kept / changed:** Checked service options and that older records still work. I wrote the migration `db/migrations/002_update_order_services.sql` myself (see section 3).
 - **Commits:** https://github.com/rnzcrt/LaundryLog/commit/29f0e8e ; https://github.com/rnzcrt/LaundryLog/commit/ac9075b
 
 ### 2026-09-28 — Payment status and balance
@@ -118,9 +125,24 @@ I checked the old versions of each file with `git show 685dd12^:<file>`. The ear
 
 The first commit (`c7df593`) contains the starter LaundryLog app from the course archive: the Express app, routes, validators, database code, frontend, schema and styling. I did not write that and I do not claim it. Most later features were built with ChatGPT (section 1). The October 3 backend refactor (`basicAuth.js`, `errorHandler.js`, `orders.js`) came from a Claude review; I applied and tested it, but I do not list it here as code I wrote.
 
-What I can point to in the git history as my own work is below. It is small compared with the whole project, and I would rather say that than claim more. In particular, I did not write the server routes, validators, SQL queries or migrations myself, so I am not claiming the one-fifth share of the Node, Express and Postgres code. My own code is the frontend feature, two small API tests and the check script listed below.
+What I can point to in the git history as my own work is below. It is small compared with the whole project, and I would rather say that than claim more. I did not write the server routes, validators or application queries myself, so I am not claiming one fifth of the Node and Express code. What I wrote myself is about 105 lines of Postgres SQL (three migration pieces, roughly 3% of the 3,500 lines of backend code), a frontend feature, two small API tests and the check script listed below.
 
 ### Written by me
+
+**Machines tables migration (Postgres)**
+- **File:** `db/migrations/001_add_machines.sql` (61 lines)
+- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/66c8b4e
+- **What it does and why it is built this way:** ChatGPT helped me plan the machine feature, and I wrote this migration myself. `machines` stores each washer and dryer: a unique name, a type (`regular` or `titan`), a kind (`washer` or `dryer`), a capacity in kg that must be above zero, and a status that is `available`, `running` or `maintenance`. I used `CHECK` constraints so the database refuses a wrong value even if the app has a bug, and indexes on type, kind and status because the app filters machines by them. `machine_loads` stores one load of an order on one machine. `order_id` uses `ON DELETE CASCADE`, so deleting an order removes its loads, but `machine_id` uses `ON DELETE RESTRICT`, so a machine that has loads cannot be deleted. `UNIQUE (order_id, load_number)` stops two loads from sharing a number inside an order. `IF NOT EXISTS` on the tables and indexes, and `ON CONFLICT (name) DO NOTHING` on the seed rows, make the file safe to run twice. It adds the eight shop machines: three regular washers and three regular dryers of 8 kg, plus one Titan washer and one Titan dryer of 10 kg.
+
+**Order services constraints migration (Postgres)**
+- **File:** `db/migrations/002_update_order_services.sql` (35 lines)
+- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/29f0e8e
+- **What it does and why it is built this way:** I wrote this so existing orders keep working when I added new services. It runs inside `BEGIN`/`COMMIT`, so either all of it applies or none. It drops and recreates `orders_load_type_check` so the allowed service types are `wash_fold`, `wash_only`, `dry_only`, `fold_only`, `dry_clean` and `press_only`. Then it recreates `measure_matches_load_type`: the weight-based services must have a weight and no item count, and the item-based services (`dry_clean`, `press_only`) must have an item count and no weight. That stops an order from being priced by kilos and by pieces at the same time. `DROP CONSTRAINT IF EXISTS` lets the file run again without failing.
+
+**Add-on catalog insert (Postgres)**
+- **File:** `db/migrations/011_completion_addon_catalog.sql` (only the `INSERT INTO service_addons` statement, about 10 lines)
+- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/543a856
+- **What it does and why it is built this way:** I wrote the list of add-ons staff can pick when completing an order: Folding at ₱20.00, the detergent and fabric-conditioner products at ₱10.00, and Zonrox Colorsafe at ₱5.00, all active. The comments and the rest of this migration (the `ON CONFLICT … DO UPDATE` part and the statement that retires old test add-ons) came from ChatGPT in the same commit.
 
 **Customer search and order history (frontend)**
 - **File:** `public/app.js` (about 114 lines added) and `public/index.html` (16 lines)

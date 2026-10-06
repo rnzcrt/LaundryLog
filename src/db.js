@@ -16,18 +16,10 @@ pool.on('error', (err) => {
   console.error('Unexpected error on idle database client:', err.message);
 });
 
-/**
- * Run a parameterised query. Values are always passed separately from the SQL
- * text, so user input can never be concatenated into a statement.
- */
 function query(text, params) {
   return pool.query(text, params);
 }
 
-/**
- * Run several statements as one transaction. The callback receives a client;
- * anything it throws rolls the whole thing back.
- */
 async function withTransaction(callback) {
   const client = await pool.connect();
   try {

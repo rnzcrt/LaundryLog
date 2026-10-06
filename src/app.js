@@ -28,13 +28,11 @@ app.use((req, res, next) => {
   next();
 });
 
-// Liveness-only endpoint for hosting health checks; it reveals no database state.
 app.get('/healthz', (req, res) => res.type('text/plain').send('ok'));
 
 app.use(basicAuth);
 app.use(express.json({ limit: '32kb' }));
 
-// Small request log, useful while building.
 app.use((req, res, next) => {
   const started = Date.now();
   res.on('finish', () => {
@@ -43,10 +41,8 @@ app.use((req, res, next) => {
   next();
 });
 
-// The staff-facing page.
 app.use(express.static(path.join(__dirname, '..', 'public')));
 
-/** Confirms the server is up and that it can actually reach Postgres. */
 app.get('/api/health', async (req, res) => {
   try {
     await db.query('SELECT 1');

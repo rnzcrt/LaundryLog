@@ -56,25 +56,17 @@ const ORDER_SELECT = `
   ) pay ON true
 `;
 
-// Columns returned whenever a single machine load is sent back to the client.
 const LOAD_COLUMNS = `id, order_id, machine_id, load_number, weight_kg,
                       status, started_at, completed_at, notes, created_at`;
 
-// What a single load may move to next.
 const LOAD_TRANSITIONS = {
   queued: ['running'],
   running: ['completed'],
   completed: [],
 };
 
-// Single-stage orders can only use one kind of machine.
 const EXCLUSIVE_MACHINE_KIND = { wash_only: 'washer', dry_only: 'dryer' };
 
-/**
- * GET /api/orders
- * Optional query: ?status=washing  ?q=maria
- * The filter tabs on the order list use this.
- */
 router.get(
   '/',
   asyncHandler(async (req, res) => {
@@ -112,10 +104,6 @@ router.get(
   }),
 );
 
-/**
- * GET /api/orders/:id
- * One order with its customer, its status timeline and its payment.
- */
 router.get(
   '/:id',
   asyncHandler(async (req, res) => {
@@ -167,12 +155,6 @@ router.get(
   }),
 );
 
-/**
- * POST /api/orders
- * Creates the order, and the customer too if this is a first visit.
- * Both inserts plus the first history row happen in one transaction so a
- * half-written order can never be left behind.
- */
 router.post(
   '/',
   asyncHandler(async (req, res) => {
@@ -303,7 +285,6 @@ router.post(
 const WASHER_LOAD_TYPES = ['wash_fold', 'wash_only'];
 const DRYER_LOAD_TYPES = ['wash_fold', 'dry_only'];
 
-/** Weights are compared in hundredths of a kilo so decimals never cause false mismatches. */
 function toCentiKg(weight) {
   return Math.round(Number(weight) * 100);
 }
@@ -334,7 +315,6 @@ async function finishMachineStage(client, orderId, machineKind) {
   }
 }
 
-/** Marks the machines as running and starts every queued load they hold for this order. */
 async function startQueuedLoads(client, orderId, machineIds) {
   await client.query(
     `UPDATE machines SET status = 'running'
@@ -348,11 +328,6 @@ async function startQueuedLoads(client, orderId, machineIds) {
   );
 }
 
-/**
- * Works out which machines the staff member picked for this status change.
- * Starting a wash with no new picks is allowed: it reuses loads that were
- * queued earlier through POST /:id/loads.
- */
 function parseMachineAssignments(body, order, status, machineKind) {
   const supplied = body.machine_assignments;
 
@@ -392,7 +367,6 @@ function parseCompletionChoices(body, status) {
   }
 }
 
-/** Locks every machine this order touches (in id order, so two requests cannot deadlock). */
 async function lockOrderMachines(client, orderId, assignments) {
   const existing = await client.query(
     'SELECT DISTINCT machine_id FROM machine_loads WHERE order_id = $1',
@@ -413,7 +387,6 @@ async function lockOrderMachines(client, orderId, assignments) {
   }
 }
 
-/** Entering "washing" with loads already queued: they must cover the whole order, then they start. */
 async function startQueuedWasherLoads(client, order) {
   const queued = await client.query(
     `SELECT COALESCE(SUM(ml.weight_kg), 0) AS weight
@@ -447,7 +420,6 @@ async function startQueuedWasherLoads(client, order) {
   }
 }
 
-/** Checks the picked machines are free and big enough, then queues one load per machine. */
 async function assignMachineLoads(client, { orderId, machineKind, assignments }) {
   const machineIds = assignments.map((assignment) => assignment.machineId);
 
@@ -493,7 +465,6 @@ async function assignMachineLoads(client, { orderId, machineKind, assignments })
   }
 }
 
-/** Leaving "drying" for "folding": the dryers must have been running the whole order. */
 async function finishDryerStage(client, order) {
   const dryerLoads = await client.query(
     `SELECT COALESCE(SUM(ml.weight_kg), 0) AS weight
@@ -507,7 +478,6 @@ async function finishDryerStage(client, order) {
   await finishMachineStage(client, order.id, 'dryer');
 }
 
-/** Charges the add-ons chosen at completion and adds them to the order price. */
 async function chargeCompletionAddons(client, orderId, completionAddons) {
   const addonIds = completionAddons.map((addon) => addon.id);
 
@@ -550,11 +520,6 @@ async function chargeCompletionAddons(client, orderId, completionAddons) {
   );
 }
 
-/**
- * PATCH /api/orders/:id/status
- * Moves an order one step along new -> waiting -> washing -> drying -> folding -> ready -> completed.
- * Machine loads and add-ons change together with the status, so it is all one transaction.
- */
 router.patch(
   '/:id/status',
   asyncHandler(async (req, res) => {
@@ -578,8 +543,6 @@ router.patch(
 
       await lockOrderMachines(client, id, assignments);
 
-      // Order matters below: the washer stage is closed before dryers are
-      // picked, so a machine freed by the last stage can be assigned again.
       if (status === 'washing' && !assignments.length && WASHER_LOAD_TYPES.includes(before.load_type)) {
         await startQueuedWasherLoads(client, before);
       }
@@ -623,10 +586,6 @@ router.patch(
   }),
 );
 
-/**
- * POST /api/orders/:id/payment
- * Records a partial or final payment without allowing overpayment.
- */
 router.post(
   '/:id/payment',
   asyncHandler(async (req, res) => {
@@ -729,10 +688,6 @@ router.get(
   }),
 );
 
-/**
- * POST /api/orders/:id/loads
- * Queues one machine load for an order, checking weight, capacity and machine state.
- */
 router.post(
   '/:id/loads',
   asyncHandler(async (req, res) => {
@@ -811,10 +766,6 @@ router.post(
   }),
 );
 
-/**
- * PATCH /api/orders/:orderId/loads/:loadId/status
- * Moves a single load queued -> running -> completed and updates its machine to match.
- */
 router.patch(
   '/:orderId/loads/:loadId/status',
   asyncHandler(async (req, res) => {

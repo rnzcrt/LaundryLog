@@ -4,7 +4,6 @@ const crypto = require('crypto');
 
 const BASIC_PREFIX = 'Basic ';
 
-/** Compares two strings in constant time (after checking the lengths match). */
 function safeEqual(left, right) {
   const leftBuffer = Buffer.from(left);
   const rightBuffer = Buffer.from(right);
@@ -12,16 +11,11 @@ function safeEqual(left, right) {
     crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
-/** Every failed login gets the same 401 + challenge, only the message differs. */
 function rejectWith(res, message) {
   res.set('WWW-Authenticate', 'Basic realm="LaundryLog"');
   return res.status(401).json({ error: message });
 }
 
-/**
- * Splits an "Authorization: Basic ..." header into { username, password }.
- * Returns null when the header is not valid Basic credentials.
- */
 function parseBasicHeader(header) {
   const decoded = Buffer.from(header.slice(BASIC_PREFIX.length), 'base64').toString('utf8');
   const separator = decoded.indexOf(':');
@@ -51,7 +45,6 @@ function createBasicAuth(env = process.env) {
       return rejectWith(res, 'Invalid authentication');
     }
 
-    // Both comparisons always run so a wrong username takes as long as a wrong password.
     const userMatches = safeEqual(credentials.username, expectedUser);
     const passwordMatches = safeEqual(credentials.password, expectedPassword);
     if (!userMatches || !passwordMatches) {

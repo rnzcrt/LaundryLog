@@ -20,7 +20,6 @@ const PRODUCT_SELECT = `
   FROM products
 `;
 
-// GET /api/products
 router.get(
   "/",
   asyncHandler(async (req, res) => {
@@ -49,7 +48,6 @@ router.get(
   }),
 );
 
-// POST /api/products
 router.post(
   "/",
   asyncHandler(async (req, res) => {
@@ -115,9 +113,6 @@ router.post(
   }),
 );
 
-// PATCH /api/products/:id
-
-// PATCH /api/products/:id
 router.patch(
   "/:id",
   asyncHandler(async (req, res) => {
@@ -242,8 +237,6 @@ router.patch(
 
 module.exports = router;
 
-// POST /api/products/:id/movements
-// Record stock received or product usage.
 router.post(
   "/:id/movements",
   asyncHandler(async (req, res) => {
@@ -329,8 +322,6 @@ router.post(
   }),
 );
 
-// GET /api/products/:id/movements
-// View a product's movement history.
 router.get(
   "/:id/movements",
   asyncHandler(async (req, res) => {

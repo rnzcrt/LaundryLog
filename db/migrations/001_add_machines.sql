@@ -1,5 +1,3 @@
--- Add laundry machines without recreating or deleting existing data.
-
 CREATE TABLE IF NOT EXISTS machines (
     id          SERIAL PRIMARY KEY,
     name        TEXT NOT NULL UNIQUE,
@@ -20,7 +18,6 @@ CREATE INDEX IF NOT EXISTS machines_kind_idx
 CREATE INDEX IF NOT EXISTS machines_status_idx
     ON machines (status);
 
--- Track each physical laundry load assigned to a machine.
 
 CREATE TABLE IF NOT EXISTS machine_loads (
     id          SERIAL PRIMARY KEY,
@@ -47,7 +44,6 @@ CREATE INDEX IF NOT EXISTS machine_loads_machine_idx
 CREATE INDEX IF NOT EXISTS machine_loads_status_idx
     ON machine_loads (status);
 
--- Required LaundryLog machine inventory.
 INSERT INTO machines (name, machine_type, machine_kind, capacity_kg)
 VALUES
     ('Regular Washer 1', 'regular', 'washer', 8),

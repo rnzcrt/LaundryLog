@@ -1,5 +1,3 @@
--- Idempotent sample data for a local/demo database. Every generated order and
--- movement has a marker so rerunning this file does not duplicate sample rows.
 BEGIN;
 
 INSERT INTO customers (name, phone, notes) VALUES
@@ -60,8 +58,6 @@ INSERT INTO products (name, unit, stock_quantity, low_stock_threshold) VALUES
     ('Stain remover', 'bottles', 2, 3)
 ON CONFLICT (name) DO NOTHING;
 
--- Requested optional completion add-ons. Exact-name upserts keep this safe to
--- rerun and leave order_addons historical name/price snapshots untouched.
 INSERT INTO service_addons (name, price, is_active) VALUES
     ('Folding', 20.00, true),
     ('Ariel — Sunrise Fresh', 10.00, true),
@@ -77,8 +73,6 @@ SET price = EXCLUDED.price,
     is_active = true,
     updated_at = now();
 
--- Retire legacy timestamp-named workflow-test add-ons without deleting their
--- rows or changing any order_addons snapshots that may reference them.
 UPDATE service_addons
 SET is_active = false,
     updated_at = now()

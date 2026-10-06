@@ -58,7 +58,6 @@ let activeStatus = "all";
 let activeOrderQuery = "";
 let currentKanbanOrders = [];
 
-/** Fetch wrapper that turns an API error body into a thrown Error. */
 async function api(path, options = {}) {
   const response = await fetch(path, {
     headers: { "Content-Type": "application/json" },

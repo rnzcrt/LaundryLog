@@ -2,7 +2,6 @@
 
 const { HttpError } = require('./httpError');
 
-/** Anything reaching here asked for a route that does not exist. */
 function notFoundHandler(req, res) {
   res.status(404).json({
     error: 'Not found',
@@ -10,12 +9,7 @@ function notFoundHandler(req, res) {
   });
 }
 
-/**
- * The single place that turns an error into a response.
- * Postgres constraint violations are translated here so the API returns a
- * useful status instead of a blanket 500.
- */
-function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-vars
+function errorHandler(err, req, res, next) { 
   if (err instanceof HttpError) {
     return res.status(err.status).json({
       error: err.message,
@@ -23,7 +17,6 @@ function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-va
     });
   }
 
-  // express.json() reports bad bodies with its own error types and a 4xx status.
   if (err.type === 'entity.parse.failed') {
     return res.status(400).json({ error: 'Request body is not valid JSON' });
   }
@@ -31,24 +24,23 @@ function errorHandler(err, req, res, next) { // eslint-disable-line no-unused-va
     return res.status(413).json({ error: 'Request body is too large' });
   }
 
-  // Postgres error codes: https://www.postgresql.org/docs/current/errcodes-appendix.html
   switch (err.code) {
-    case '23505': // unique_violation
+    case '23505': 
       return res.status(409).json({
         error: 'That record already exists',
         message: 'A unique field is already taken.',
       });
-    case '23503': // foreign_key_violation
+    case '23503': 
       return res.status(400).json({
         error: 'Referenced record does not exist',
         message: 'A referenced id was not found.',
       });
-    case '23514': // check_violation
+    case '23514':
       return res.status(400).json({
         error: 'Value rejected by the database',
         message: 'One or more values do not meet the data rules.',
       });
-    case '22P02': // invalid_text_representation
+    case '22P02': 
       return res.status(400).json({ error: 'Invalid value in request' });
     case 'ECONNREFUSED':
       console.error('Database connection refused:', err.message);

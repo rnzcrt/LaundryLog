@@ -54,8 +54,6 @@ function splitLoadWeight(totalWeightKg, capacityKg) {
 
   while (remaining > 0) {
     const loadWeight = Math.min(remaining, capacity);
-    // Both values are positive integer hundredths, so this always reduces the
-    // remaining weight and avoids floating-point drift or a stalled loop.
     loads.push(loadWeight / 100);
     remaining -= loadWeight;
   }

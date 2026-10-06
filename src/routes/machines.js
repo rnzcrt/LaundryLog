@@ -58,10 +58,6 @@ function validateMachine(body, partial = false) {
     .map((field) => [field, body[field]]));
 }
 
-/**
- * GET /api/machines
- * Returns all laundry machines and their current status.
- */
 router.get(
   '/',
   asyncHandler(async (req, res) => {

@@ -16,11 +16,6 @@ function isValidDate(value) {
     date.toISOString().slice(0, 10) === value;
 }
 
-/**
- * GET /api/reports/summary?from=YYYY-MM-DD&to=YYYY-MM-DD
- * Sales follow order creation dates; collections follow payment dates.
- * Date boundaries use the Asia/Manila timezone.
- */
 router.get(
   "/summary",
   asyncHandler(async (req, res) => {

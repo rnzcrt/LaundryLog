@@ -1,6 +1,3 @@
--- Initial schema for a fresh LaundryLog database.
--- Keep this at the start of the migration sequence; later migrations evolve it.
-
 CREATE TABLE customers (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL CHECK (length(trim(name)) > 0),

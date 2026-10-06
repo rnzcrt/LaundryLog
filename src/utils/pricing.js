@@ -25,9 +25,6 @@ function calculateServicePrice(service, machineType) {
   if (!['regular', 'titan'].includes(machineType)) {
     throw new Error('machineType must be regular or titan');
   }
-
-  // Capacity and machine cycles affect scheduling only. The selected service
-  // has one flat base price per order.
   return PRICES[`${machineType}_${service}`];
 }
 
@@ -66,8 +63,6 @@ function calculateOrderPrice({
 
     total += calculateServicePrice('wash', washMachineType);
     total += calculateServicePrice('dry', dryMachineType);
-    // The selected Wash & Fold base service includes one folding service fee;
-    // load splitting never multiplies any service charge.
     total += calculateServicePrice('fold', 'regular');
 
     return total;

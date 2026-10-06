@@ -1,4 +1,3 @@
--- Configurable service add-ons with immutable order-time price snapshots.
 CREATE TABLE service_addons (
     id SERIAL PRIMARY KEY,
     name TEXT NOT NULL UNIQUE CHECK (length(trim(name)) > 0),

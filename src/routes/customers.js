@@ -11,10 +11,6 @@ const {
 
 const router = express.Router();
 
-/**
- * GET /api/customers
- * The counter directory: who has been here, and how much they have open.
- */
 router.get(
   "/",
   asyncHandler(async (req, res) => {
@@ -46,7 +42,6 @@ router.get(
   }),
 );
 
-/** GET /api/customers/:id - one customer and their order history. */
 router.get(
   "/:id",
   asyncHandler(async (req, res) => {
@@ -84,7 +79,6 @@ router.get(
   }),
 );
 
-/** POST /api/customers - add a customer without starting an order. */
 router.post(
   "/",
   asyncHandler(async (req, res) => {
@@ -104,7 +98,6 @@ router.post(
   }),
 );
 
-/** PATCH /api/customers/:id - edit customer contact details without touching orders. */
 router.patch(
   '/:id',
   asyncHandler(async (req, res) => {

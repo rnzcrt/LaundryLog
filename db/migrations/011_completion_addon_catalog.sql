@@ -1,5 +1,3 @@
--- Keep the selectable completion catalog canonical. Existing order_addons
--- snapshots are intentionally left unchanged.
 INSERT INTO service_addons (name, price, is_active) VALUES
     ('Folding', 20.00, true),
     ('Ariel — Sunrise Fresh', 10.00, true),
@@ -15,8 +13,6 @@ SET price = EXCLUDED.price,
     is_active = true,
     updated_at = now();
 
--- Retire timestamp-named workflow-test entries without deleting rows that
--- historical order_addons may reference.
 UPDATE service_addons
 SET is_active = false,
     updated_at = now()

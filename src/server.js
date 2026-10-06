@@ -14,7 +14,6 @@ const server = app.listen(port, () => {
   console.log(`LaundryLog is running at http://localhost:${port}`);
 });
 
-// Close the database pool cleanly on Ctrl+C.
 function shutdown(signal) {
   console.log(`\n${signal} received, shutting down.`);
   server.close(async () => {
