@@ -130,7 +130,7 @@ What I can point to in the git history as my own work is below. It is small comp
 ### Written by me
 
 **Machines tables migration (Postgres)**
-- **File:** `db/migrations/001_add_machines.sql` (61 lines)
+- **File:** `db/migrations/001_add_machines.sql` (57 lines)
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/66c8b4e
 - **What it does and why it is built this way:** ChatGPT helped me plan the machine feature, and I wrote this migration myself. `machines` stores each washer and dryer: a unique name, a type (`regular` or `titan`), a kind (`washer` or `dryer`), a capacity in kg that must be above zero, and a status that is `available`, `running` or `maintenance`. I used `CHECK` constraints so the database refuses a wrong value even if the app has a bug, and indexes on type, kind and status because the app filters machines by them. `machine_loads` stores one load of an order on one machine. `order_id` uses `ON DELETE CASCADE`, so deleting an order removes its loads, but `machine_id` uses `ON DELETE RESTRICT`, so a machine that has loads cannot be deleted. `UNIQUE (order_id, load_number)` stops two loads from sharing a number inside an order. `IF NOT EXISTS` on the tables and indexes, and `ON CONFLICT (name) DO NOTHING` on the seed rows, make the file safe to run twice. It adds the eight shop machines: three regular washers and three regular dryers of 8 kg, plus one Titan washer and one Titan dryer of 10 kg.
 
