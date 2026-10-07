@@ -54,9 +54,9 @@ The application is hosted on Render. Still to confirm in the Render dashboard: t
 | Checklist                                                          | Status     |
 | ------------------------------------------------------------------ | ---------- |
 | Seed data is invented and does not identify real customers         | [x] Seed customers use made-up names and 555 phone numbers |
-| No real classmates' names, numbers, emails, or photos are included | [x] To do: remove test customers with real-looking data from the live database |
-| Real testers' personal information has been removed                | [x] To do: see above |
-| Screenshots and demo video do not expose personal information      | [x] To do: retake the screenshots after the data is cleaned |
+| No real classmates' names, numbers, emails, or photos are included | [x] Test data was replaced with fictional names and numbers |
+|Real testers' personal information has been removed                 | [x] Removed from the live database on October 4, 2026 |
+| Screenshots and demo video do not expose personal information      | [x] Screenshots retaken after the data was cleaned |
 | The app explains what personal information it collects             | [x] README section 10 explains it; the app collects customer name, phone and notes |
 | Only necessary customer information is collected                   | [x] Name, phone and optional notes only |
 | No unnecessary personal information is stored in logs              | [x] Request logs record method, path, status and time only |

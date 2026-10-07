@@ -98,88 +98,87 @@ I used AI heavily on this project: ChatGPT for most feature work, pricing and wo
 
 ## 2. Where the AI got it wrong
 
-I checked the old versions of each file with `git show 685dd12^:<file>`. The earlier code came from my ChatGPT-assisted commits described in section 1.
+I looked at the old versions of the files with `git show 685dd12^:<file>`. The old code came from my ChatGPT-assisted commits in section 1.
 
-### Case 1 — Bad JSON bodies came back as a server error
-- **Tool:** ChatGPT-assisted code; found during the Claude review on 2026-10-03.
-- **What it gave me:** An error handler that translated my own `HttpError` and Postgres error codes but had no case for body-parser errors. A malformed or oversized JSON request therefore fell through to the catch-all and returned `500 Something went wrong on the server`.
-- **What was wrong:** A 500 means "the server broke", but the client sent bad data. It hides the real problem from the caller and fills the logs with fake server errors.
-- **The fix:** `errorHandler.js` now checks `err.type`: `entity.parse.failed` returns `400` and `entity.too.large` returns `413`, each with a JSON message. I updated `test/security.test.js` to cover it.
+### Case 1 — Bad JSON gave a 500 error
+- **Tool:** ChatGPT (found during the Claude review, 2026-10-03)
+- **What it gave me:** An error handler with no case for bad JSON bodies.
+- **What was wrong:** Broken or too-big JSON fell through to the catch-all and returned `500 Something went wrong on the server`, even though the client was the one that sent bad data.
+- **Fix:** `errorHandler.js` now returns 400 for bad JSON and 413 for a body that is too large. I added a test in `test/security.test.js`.
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/685dd127a0455ea201b3768b44e93e4e8a2ef3ee
 
-### Case 2 — Login checks could leak whether the username was right
-- **Tool:** ChatGPT-assisted code; found during the Claude review on 2026-10-03.
-- **What it gave me:** Basic Auth that checked `!safeEqual(username, expectedUser) || !safeEqual(password, expectedPassword)`, wrapped `Buffer.from(...)` in a `try/catch`, and repeated the same `res.set('WWW-Authenticate', ...)` plus 401 response in four places.
-- **What was wrong:** Because of the `||`, a wrong username skipped the password comparison, so the two failure cases did slightly different work. The helper was built to be constant-time, but the check around it wasn't. The `try/catch` was dead code because `Buffer.from(string, 'base64')` does not throw on bad input, and the copy-pasted rejections invited inconsistencies. This is a small hardening fix, not a big hole: `safeEqual` still returns early when the lengths differ.
-- **The fix:** `basicAuth.js` now stores both comparison results first, then rejects if either is false. The `try/catch` is gone and every failure goes through one `rejectWith` helper.
+### Case 2 — Login check skipped the password
+- **Tool:** ChatGPT (found during the Claude review, 2026-10-03)
+- **What it gave me:** Basic Auth that used `!safeEqual(username, expectedUser) || !safeEqual(password, expectedPassword)`, a `try/catch` around `Buffer.from`, and the same 401 response copied in four places.
+- **What was wrong:** Because of the `||`, a wrong username never reached the password check, so the two failures did different work. The `try/catch` could never trigger. It is a small issue, not a big hole.
+- **Fix:** `basicAuth.js` now runs both comparisons every time, uses one helper for the 401 responses, and the `try/catch` is gone.
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/685dd127a0455ea201b3768b44e93e4e8a2ef3ee
 
-### Case 3 — The machine lookup left out `name`, so errors never said which machine
-- **Tool:** ChatGPT-assisted code; found during the Claude review on 2026-10-03.
-- **What it gave me:** In the old status handler the lookup was `SELECT id, machine_kind, capacity_kg, status FROM machines WHERE id = ANY($1)`, with no `name` column. The error below it used `${machine.name || 'Selected machine'}`.
-- **What was wrong:** Since `name` was never selected, `machine.name` was always `undefined`, so the fallback always ran and the message always said "Selected machine is unavailable or too small for its assigned load". The `|| 'Selected machine'` fallback hid the bug, so no test or crash showed it. Staff could not tell which machine was the problem.
-- **The fix:** The refactored lookup is `SELECT id, name, machine_kind, capacity_kg, status …`, and the message uses `${machine.name}` directly, so it names the actual machine. The fallback was removed so a missing name can't be hidden again.
+### Case 3 — Error never said which machine
+- **Tool:** ChatGPT (found during the Claude review, 2026-10-03)
+- **What it gave me:** A machine query of `SELECT id, machine_kind, capacity_kg, status`, with no `name`, and an error message using `${machine.name || 'Selected machine'}`.
+- **What was wrong:** `name` was never selected, so the message always said "Selected machine". The fallback hid the bug, so nothing crashed and no test caught it.
+- **Fix:** The query now selects `name` and the message uses `${machine.name}`, so it shows the real machine.
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/685dd127a0455ea201b3768b44e93e4e8a2ef3ee
 
 ## 3. Who wrote what
 
-The first commit (`c7df593`) contains the starter LaundryLog app from the course archive: the Express app, routes, validators, database code, frontend, schema and styling. I did not write that and I do not claim it. Most later features were built with ChatGPT (section 1). The October 3 backend refactor (`basicAuth.js`, `errorHandler.js`, `orders.js`) came from a Claude review; I applied and tested it, but I do not list it here as code I wrote.
+The first commit (`c7df593`) has the starter app from the course archive. I did not write that. Most later features were built with ChatGPT (section 1). The Oct 3 refactor of `basicAuth.js`, `errorHandler.js` and `orders.js` came from Claude; I applied and tested it, but I am not counting it as mine.
 
-What I can point to in the git history as my own work is below. It is small compared with the whole project, and I would rather say that than claim more. I did not write the server routes, validators or application queries myself, so I am not claiming one fifth of the Node and Express code. What I wrote myself is about 100 lines of Postgres SQL (three migration pieces, roughly 3% of the 3,500 lines of backend code), a frontend feature, two small API tests and the check script listed below.
+My own part is small. I did not write the routes, validators or application queries, so I am not claiming one fifth of the Node and Express code. What I wrote is about 100 lines of Postgres SQL (roughly 3% of the 3,500 lines of backend code), one frontend feature, two small API tests and the check script.
 
 ### Written by me
 
-**Machines tables migration (Postgres)**
+**Machines migration (Postgres)**
 - **File:** `db/migrations/001_add_machines.sql` (57 lines)
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/66c8b4e
-- **What it does and why it is built this way:** ChatGPT helped me plan the machine feature, and I wrote this migration myself. `machines` stores each washer and dryer: a unique name, a type (`regular` or `titan`), a kind (`washer` or `dryer`), a capacity in kg that must be above zero, and a status that is `available`, `running` or `maintenance`. I used `CHECK` constraints so the database refuses a wrong value even if the app has a bug, and indexes on type, kind and status because the app filters machines by them. `machine_loads` stores one load of an order on one machine. `order_id` uses `ON DELETE CASCADE`, so deleting an order removes its loads, but `machine_id` uses `ON DELETE RESTRICT`, so a machine that has loads cannot be deleted. `UNIQUE (order_id, load_number)` stops two loads from sharing a number inside an order. `IF NOT EXISTS` on the tables and indexes, and `ON CONFLICT (name) DO NOTHING` on the seed rows, make the file safe to run twice. It adds the eight shop machines: three regular washers and three regular dryers of 8 kg, plus one Titan washer and one Titan dryer of 10 kg.
+- **What it does:** ChatGPT helped me plan it; I wrote the SQL. It creates `machines` (name, regular or titan, washer or dryer, capacity, status) and `machine_loads` (one load of an order on one machine). `CHECK` constraints make the database reject bad values, and there are indexes on type, kind and status. `order_id` is `ON DELETE CASCADE`, so deleting an order deletes its loads. `machine_id` is `ON DELETE RESTRICT`, so a machine that has loads can't be deleted. `UNIQUE (order_id, load_number)` stops duplicate load numbers. `IF NOT EXISTS` and `ON CONFLICT DO NOTHING` let me run it twice safely. It adds the 8 machines: 3 regular washers and 3 regular dryers (8 kg), and 1 Titan washer and 1 Titan dryer (10 kg).
 
-**Order services constraints migration (Postgres)**
+**Order services migration (Postgres)**
 - **File:** `db/migrations/002_update_order_services.sql` (35 lines)
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/29f0e8e
-- **What it does and why it is built this way:** I wrote this so existing orders keep working when I added new services. It runs inside `BEGIN`/`COMMIT`, so either all of it applies or none. It drops and recreates `orders_load_type_check` so the allowed service types are `wash_fold`, `wash_only`, `dry_only`, `fold_only`, `dry_clean` and `press_only`. Then it recreates `measure_matches_load_type`: the weight-based services must have a weight and no item count, and the item-based services (`dry_clean`, `press_only`) must have an item count and no weight. That stops an order from being priced by kilos and by pieces at the same time. `DROP CONSTRAINT IF EXISTS` lets the file run again without failing.
+- **What it does:** Sets the allowed service types (`wash_fold`, `wash_only`, `dry_only`, `fold_only`, `dry_clean`, `press_only`) and adds a rule: weight-based services need a weight and no item count, and `dry_clean` and `press_only` need an item count and no weight. So an order can't be priced by kilos and by pieces at once. It drops and recreates the constraints so old orders still work. The file has `BEGIN`/`COMMIT`, but my migration runner removes them and runs the file in its own transaction, so it still applies all or nothing.
 
-**Add-on catalog insert (Postgres)**
-- **File:** `db/migrations/011_completion_addon_catalog.sql` (only the `INSERT INTO service_addons` statement, about 10 lines)
+**Add-on prices (Postgres)**
+- **File:** `db/migrations/011_completion_addon_catalog.sql` (only the `INSERT INTO service_addons`, about 10 lines)
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/543a856
-- **What it does and why it is built this way:** I wrote the list of add-ons staff can pick when completing an order: Folding at ₱20.00, the detergent and fabric-conditioner products at ₱10.00, and Zonrox Colorsafe at ₱5.00, all active. The comments and the rest of this migration (the `ON CONFLICT … DO UPDATE` part and the statement that retires old test add-ons) came from ChatGPT in the same commit.
+- **What it does:** The add-ons staff can pick when completing an order: Folding ₱20, the detergent and conditioner products ₱10, Zonrox Colorsafe ₱5. The rest of that migration came from ChatGPT.
 
 **Customer search and order history (frontend)**
 - **File:** `public/app.js` (about 114 lines added) and `public/index.html` (16 lines)
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/247c616
-- **What it does and why it is built this way:** I planned this with ChatGPT, then wrote the frontend code myself and reused the customer endpoints that already existed in `src/routes/customers.js`. `loadCustomers` builds the query string with `URLSearchParams`, skips it when the box is empty, calls `/api/customers?q=...`, and throws if the response is not OK. `escapeHtml` swaps `& < > " '` for safe codes before names and phones go into `innerHTML`, so a customer named `<script>` cannot run code on the page. `renderCustomers` draws one card per customer with a "View history" button that stores the customer id in `data-customer-id`. I attached one click listener to the whole list instead of one per button, and it uses `event.target.closest('.customer-history')`, so it also works for cards drawn later after a new search. Typing in the box runs the search on every keystroke. `openCustomerHistory` loads `/api/customers/:id` and builds the dialog with `createElement` and `textContent`, and it shows "No orders yet." for a customer with no orders. The customer list was later redrawn as a table in `bb591f0` (ChatGPT); this commit is my original version.
+- **What it does:** I planned it with ChatGPT and wrote the code myself, using the customer endpoints that already existed. `loadCustomers` calls `/api/customers?q=...` and `escapeHtml` cleans names and phones before they go into `innerHTML`, so a name like `<script>` can't run. There is one click listener on the list that uses `closest('.customer-history')`, so cards added after a new search still work. `openCustomerHistory` loads `/api/customers/:id` and shows "No orders yet." if there are none. ChatGPT later changed the list to a table in `bb591f0`; this commit is my version.
 
 **Singular item label**
 - **File:** `public/app.js` (`measure()`)
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/5d12768
-- **What it does and why it is built this way:** An order with one item used to show "1 items". I changed the template string so it adds an "s" only when the count is not 1. It is a three-line fix because the rest of the function already worked.
+- **What it does:** Fixed "1 items" so the "s" only shows when the count isn't 1. A three-line change.
 
-**First automated API tests and the `npm test` script**
+**First API tests**
 - **File:** `test/orders.test.js` (first version) and `package.json`
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/dd5a735
-- **What it does and why it is built this way:** Two tests I first checked by hand: asking for an order that does not exist returns 404, and posting an empty order returns 400 with a list of validation errors. A small `request()` helper starts the app on a random free port (`listen(0)`), makes the call with `fetch`, and always closes the server in `finally`, so tests do not collide or leave the port open. I used Node's built-in test runner (`node --test`) so no extra framework is needed.
+- **What it does:** Two tests: a missing order returns 404, and an empty order returns 400 with validation errors. A small helper starts the app on a random free port (`listen(0)`) and always closes it in `finally`. I used Node's built-in test runner, so no extra framework.
 
 **Preflight check script**
 - **File:** `scripts/check.js`
-- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/c7df593 (later versions only add more files to its list)
-- **What it does and why it is built this way:** (`c7df593` is one big commit that holds both the starter archive and my Week 1 additions, so git cannot separate them; my Week 1 report lists these files as mine.) It confirms that every required file exists, then walks `src`, `public` and `scripts` and runs `node --check` on each `.js` file, so a missing file or a syntax error shows up before I deploy. It exits with an error and a list of the missing files if anything is wrong.
+- **Commit:** https://github.com/rnzcrt/LaundryLog/commit/c7df593
+- **What it does:** Checks that every required file exists and runs `node --check` on each `.js` file, so I catch a missing file or a syntax error before deploying. `c7df593` also contains the starter code, so git can't separate them; my Week 1 report lists this file as mine.
 
-**Ignore rules and example environment file**
+**Ignore rules and example env file**
 - **File:** `.gitignore`, `.env.example`
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/c7df593
-- **What it does and why it is built this way:** `.gitignore` keeps `.env` (which holds my database password) and `node_modules` out of the repository. `.env.example` shows which variables the app needs, with a placeholder password instead of a real one.
+- **What it does:** Keeps `.env` and `node_modules` out of the repo. `.env.example` lists the variables the app needs, with placeholder values.
 
 ### The AI-written part I understand best
 
 - **File:** `src/utils/orderWorkflow.js`
 - **Commit:** https://github.com/rnzcrt/LaundryLog/commit/543a85667f7853f469b96ab889fa9387cbbfa9f5 (first added in `efcf044`)
-- **What it does and why I kept it:** ChatGPT wrote this file. It holds the rules for moving an order through the machine stages and checks everything before anything is written to the database.
-  - `requiredMachineKind` says which machine an order needs at each stage: a washer for wash-and-fold or wash-only, a dryer for wash-and-fold or dry-only.
-  - `validateMachineAssignments` rejects an empty list, the same machine twice, bad ids, and weights outside 0.01 to 100 kg or with more than two decimals. It converts weights to whole centi-kilograms and checks that the loads add up exactly to the order weight.
-  - `validateCompletionChoices` makes staff either add add-ons or explicitly skip them. It rejects "skip" with add-ons selected, "add" with none, duplicate add-ons, and quantities outside 1 to 100.
-
-  I kept it because the rules match how the shop works, and checking in a plain utility before touching the database keeps the route code short and easy to test.
+- **What it does:** ChatGPT wrote it. It checks the order workflow before anything is saved to the database.
+  - `requiredMachineKind` says which machine an order needs: a washer for wash-and-fold or wash-only, a dryer for wash-and-fold or dry-only.
+  - `validateMachineAssignments` rejects an empty list, the same machine twice, bad ids, and bad weights. It turns weights into whole centi-kilograms and checks the loads add up exactly to the order weight.
+  - `validateCompletionChoices` makes staff either add add-ons or skip them. It rejects "skip" with add-ons, "add" with none, duplicates, and quantities outside 1 to 100.
+- **Why I kept it:** The rules match how the shop works, and checking in one place keeps the route code short and easy to test.
 
 ### Requirements and decisions that were mine
 
-I decided the order stages, the Regular and Titan capacities and prices, which folding is included and which is optional, the add-on choices, payment history, and how outstanding balances work. I used these rules to check every AI suggestion and to test the deployed app. This is design and checking work, not sole authorship of the code.
+I decided the order stages, the Regular and Titan capacities and prices, which folding is included, the add-ons, payment history and how outstanding balances work. I used these to check every AI suggestion and to test the deployed app. That is design and checking work, not sole authorship of the code.
