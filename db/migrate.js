@@ -37,9 +37,6 @@ function listMigrations(directory) {
 }
 
 function migrationSql(sql) {
-  // The historical migrations 002, 003, and 007 include their own transaction
-  // wrappers. The runner owns the transaction so the SQL and history row commit
-  // atomically, so remove only those wrapper statements.
   return sql.replace(/^\s*(BEGIN|COMMIT);\s*$/gim, '');
 }
 
