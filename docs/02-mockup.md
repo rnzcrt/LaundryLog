@@ -1,6 +1,6 @@
 # LaundryLog — Mockup
 
-**Author:** Ranz Emmanuel G. Cuarto
+**Author:** rnzcrt
 **Course:** CS-403 — APSI
 **Last Updated:** October 2, 2026
 

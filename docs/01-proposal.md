@@ -1,7 +1,7 @@
 # Proposal
 
 **App Name:** LaundryLog
-**Author:** Ranz Emmanuel G. Cuarto
+**Author:** rnzcrt
 **Course:** CS-403 — APSI
 **Original Proposal Date:** August 25, 2026
 **Last Updated:** October 2, 2026
@@ -192,5 +192,5 @@ LaundryLog aims to give small laundry shop staff one place to manage customer or
 
 ## Author
 
-**Ranz Emmanuel G. Cuarto**
+**rnzcrt**
 CS-403 — APSI

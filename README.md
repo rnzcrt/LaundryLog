@@ -326,7 +326,6 @@ Set secrets through the hosting provider's environment settings, not in source c
 
 ## 12. Author and course
 
-**Ranz Cuarto**  
 6APSI — Holy Angel University  
 GitHub: [rnzcrt](https://github.com/rnzcrt)
 
