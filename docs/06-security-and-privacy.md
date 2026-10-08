@@ -27,7 +27,7 @@ The project uses `.gitignore` to exclude local environment files and `.env.examp
 | Server-side validation is implemented                                        | [x] Implemented for key order, machine, add-on, and inventory operations |
 | Text fields have appropriate length limits                                   | [x] Names, phones, notes, units and add-on names are limited; JSON bodies are capped at 32 KB |
 | CORS is restricted to allowed origins                                        | N/A: CORS is not enabled; the frontend and API are served from the same origin |
-| Production environment is configured on Render                               | [ ] Not verified: check `NODE_ENV` in the Render dashboard |
+| Production environment is configured on Render                               | [x] NOD_ENC is not set on Render, the app does not read it |
 | Error responses avoid exposing stack traces                                  | [x] Unexpected errors return a generic 500; details go to the server log only |
 | Helmet is installed and configured                                           | No: Helmet is not used. Security headers are set manually in `src/app.js` (`nosniff`, a Content Security Policy, `x-powered-by` disabled) |
 | Sensitive or costly endpoints are rate limited                               | No: not implemented; listed as a limitation |
